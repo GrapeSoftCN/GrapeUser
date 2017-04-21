@@ -73,43 +73,42 @@ public class RolesModel {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
-		return role.select();
+		return role.limit(20).select();
 	}
 
 	public JSONObject page(int idx, int pageSize) {
 		JSONArray array = role.page(idx, pageSize);
-		@SuppressWarnings("unchecked")
-		JSONObject object = new JSONObject() {
-			private static final long serialVersionUID = 1L;
-			{
-				put("totalSize", (int) Math.ceil((double) role.count() / pageSize));
-				put("currentPage", idx);
-				put("pageSize", pageSize);
-				put("data", array);
-
-			}
-		};
-		return object;
+		return page2Json(role,idx, pageSize, array);
 	}
 
+	public JSONObject page(int idx, int pageSize,String ownid) {
+		JSONArray array = role.eq("ownid", ownid).page(idx, pageSize);
+		return page2Json(role,idx, pageSize, array);
+	}
 	public JSONObject page(int idx, int pageSize, JSONObject object) {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
 		JSONArray array = role.page(idx, pageSize);
-		@SuppressWarnings("unchecked")
-		JSONObject _obj = new JSONObject() {
-			private static final long serialVersionUID = 1L;
-			{
-				put("totalSize", (int) Math.ceil((double) role.count() / pageSize));
-				put("currentPage", idx);
-				put("pageSize", pageSize);
-				put("data", array);
-			}
-		};
-		return _obj;
+		return page2Json(role,idx, pageSize, array);
+	}
+	public JSONObject page(int idx, int pageSize, JSONObject object,String ownid) {
+		for (Object object2 : object.keySet()) {
+			role.eq(object2.toString(), object.get(object2.toString()));
+		}
+		JSONArray array = role.eq("ownid", ownid).page(idx, pageSize);
+		return page2Json(role,idx, pageSize, array);
 	}
 
+	@SuppressWarnings("unchecked")
+	public JSONObject page2Json(DBHelper role,int idx, int pageSize,JSONArray array) {
+		JSONObject object = new JSONObject();
+		object.put("totalSize", (int) Math.ceil((double) role.count() / pageSize));
+		object.put("currentPage", idx);
+		object.put("pageSize", pageSize);
+		object.put("data", array);
+		return object;
+	}
 	public int delete(String id) {
 		return role.eq("_id", new ObjectId(id)).delete() != null ? 0 : 99;
 	}

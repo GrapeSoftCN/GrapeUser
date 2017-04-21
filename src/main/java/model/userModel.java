@@ -179,7 +179,7 @@ public class userModel {
 				.update() != null ? 0 : 99;
 	}
 	public JSONArray select() {
-		return users.select();
+		return users.limit(20).select();
 	}
 
 	public JSONArray select(JSONObject userInfo) {
@@ -189,7 +189,7 @@ public class userModel {
 			}
 			users.eq(object2.toString(), userInfo.get(object2.toString()));
 		}
-		return users.select();
+		return users.limit(20).select();
 	}
 
 	/**
@@ -210,7 +210,7 @@ public class userModel {
 		JSONObject object = new JSONObject() {
 			private static final long serialVersionUID = 1L;
 			{
-				put("totalSize", (int) Math.ceil((double) select().size() / pageSize));
+				put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
 				put("currentPage", idx);
 				put("pageSize", pageSize);
 				put("data", array);
@@ -228,7 +228,7 @@ public class userModel {
 		JSONObject object = new JSONObject() {
 			private static final long serialVersionUID = 1L;
 			{
-				put("totalSize", (int) Math.ceil((double) select().size() / pageSize));
+				put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
 				put("currentPage", idx);
 				put("pageSize", pageSize);
 				put("data", array);

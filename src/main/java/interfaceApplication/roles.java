@@ -3,7 +3,6 @@ package interfaceApplication;
 import java.util.HashMap;
 
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -18,7 +17,6 @@ public class roles {
 	private JSONObject _obj = new JSONObject();
 
 	public roles() {
-		defcol.put("ugid", rolesModel.getID());
 		defcol.put("ownid", 0);
 		defcol.put("sort", 0);
 		defcol.put("fatherid", 0);
@@ -32,15 +30,16 @@ public class roles {
 	}
 
 	public String RoleUpdate(String id, String roleInfo) {
-		return rolesModel.resultMessage(rolesModel.update(id, JSONHelper.string2json(
-				roleInfo)), "修改角色成功");
+		return rolesModel.resultMessage(rolesModel.update(id, JSONHelper.string2json(roleInfo)), "修改角色成功");
 	}
+
 	public String Updates(String id, String roleInfo) {
 		JSONObject object = JSONHelper.string2json(roleInfo);
 		String ownid = object.get("ownid").toString();
 		object.remove("ownid");
 		return rolesModel.resultMessage(rolesModel.update(id, ownid, object), "组织机构修改成功");
 	}
+
 	/**
 	 * 批量修改 修改排序值和层级关系
 	 * 
@@ -80,8 +79,18 @@ public class roles {
 		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
 	}
 
+	public String Page(int idx, int pageSize, String ownid) {
+		_obj.put("records", rolesModel.page(idx, pageSize, ownid));
+		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
+	}
+
 	public String RolePageBy(int idx, int pageSize, String roleInfo) {
 		_obj.put("records", rolesModel.page(idx, pageSize, JSONHelper.string2json(roleInfo)));
+		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
+	}
+
+	public String PageBy(int idx, int pageSize, String roleInfo, String ownid) {
+		_obj.put("records", rolesModel.page(idx, pageSize, JSONHelper.string2json(roleInfo), ownid));
 		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
 	}
 
