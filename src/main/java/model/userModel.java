@@ -12,8 +12,10 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import esayhelper.DBHelper;
+import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.formHelper.formdef;
+import rpc.execRequest;
 import esayhelper.jGrapeFW_Message;
 import security.codec;
 import session.session;
@@ -29,7 +31,11 @@ public class userModel {
 	}
 
 	public userModel() {
-		_form.putRule("id"/* ,password,name,registerip,wbid" */, formdef.notNull);
+		_form.putRule("id", formdef.notNull);
+		_form.putRule("password", formdef.notNull);
+		_form.putRule("name", formdef.notNull);
+		_form.putRule("registerip", formdef.notNull);
+		_form.putRule("wbid", formdef.notNull);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -88,7 +94,8 @@ public class userModel {
 				return resultMessage(6, "");
 			}
 		}
-		// JSONObject _obj = login(username, userinfo.get("password").toString(),
+		// JSONObject _obj = login(username,
+		// userinfo.get("password").toString(),
 		// loginMode);
 		// if (_obj!=null) {
 		// _obj.remove("password");
@@ -96,7 +103,6 @@ public class userModel {
 		return login(username, userinfo.get("password").toString(), loginMode);
 	}
 
-	@SuppressWarnings("unchecked")
 	private String login(String username, String password, int loginMode) {
 		String _checkField = "";
 		switch (loginMode) {
@@ -114,12 +120,15 @@ public class userModel {
 		JSONObject object = users.eq(_checkField, username).eq("password", password).find();
 		if (object != null) {
 			session session = new session();
-			if (sessionvalue != null) {
-				return resultMessage(8, "");
-			}
-			sessionvalue = session.insertSession(username, object.toString());
-			object.put("sid", sessionvalue);
-			object.remove("password");
+			// if (sessionvalue != null) {
+			// return resultMessage(8, "");
+			// }
+			//
+			// sessionvalue = session.insertSession(username,
+			// object.toString());
+			// object.put("sid", sessionvalue);
+			// object.remove("password");
+			session.setget(username, object.toString());
 		}
 		return object != null ? object.toString() : null;
 	}
@@ -128,7 +137,8 @@ public class userModel {
 		session session = new session();
 		// session.delete(sessionvalue);
 		// System.out.println((String)session.get(UserName));
-		session.deleteSession(UserName);
+		// session.deleteSession(UserName);
+		session.delete(UserName);
 	}
 
 	public long getpoint_username(String username) {
@@ -174,10 +184,11 @@ public class userModel {
 		JSONObject object = users.eq("_id", new ObjectId(_id)).data(userInfo).update();
 		return object != null ? 0 : 99;
 	}
+
 	public int Update(String id, String ownid, JSONObject object) {
-		return users.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object)
-				.update() != null ? 0 : 99;
+		return users.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
 	}
+
 	public JSONArray select() {
 		return users.limit(20).select();
 	}
@@ -201,39 +212,34 @@ public class userModel {
 	public JSONObject select(String id) {
 		return users.eq("id", id).find();
 	}
-//	public JSONObject find(String ownid) {
-//		return users.eq("ownid", ownid).find();
-//	}
+
+	// public JSONObject find(String ownid) {
+	// return users.eq("ownid", ownid).find();
+	// }
+	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize) {
 		JSONArray array = users.page(idx, pageSize);
 		@SuppressWarnings("unchecked")
-		JSONObject object = new JSONObject() {
-			private static final long serialVersionUID = 1L;
-			{
-				put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
-				put("currentPage", idx);
-				put("pageSize", pageSize);
-				put("data", array);
-			}
-		};
+		JSONObject object = new JSONObject();
+		object.put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
+		object.put("currentPage", idx);
+		object.put("pageSize", pageSize);
+		object.put("data", array);
 		return object;
 	}
 
+	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize, JSONObject userInfo) {
 		for (Object object2 : userInfo.keySet()) {
 			users.eq(object2.toString(), userInfo.get(object2.toString()));
 		}
 		JSONArray array = users.page(idx, pageSize);
 		@SuppressWarnings("unchecked")
-		JSONObject object = new JSONObject() {
-			private static final long serialVersionUID = 1L;
-			{
-				put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
-				put("currentPage", idx);
-				put("pageSize", pageSize);
-				put("data", array);
-			}
-		};
+		JSONObject object = new JSONObject();
+		object.put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
+		object.put("currentPage", idx);
+		object.put("pageSize", pageSize);
+		object.put("data", array);
 		return object;
 	}
 
@@ -324,11 +330,35 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
+//	public String getUserPlv(String username) {
+//		session session = new session();
+//		// 从缓存中获取用户plv
+//		String userinfo = session.get(username).toString();
+//	}
 	// 操作权限验证
-	public boolean CheckPlv(String Username) {
-		
-		return true;
-	}
+	// public int CheckPlv() {
+	// int code = 0;
+	// session session = new session();
+	// JSONObject object =
+	// JSONHelper.string2json(session.get(sessionvalue).toString());
+	// // JSONObject object = users.eq("id", Username).field("plv").find();
+	// // String plv = object.get("plv").toString();
+	// // 判断plv的值
+	// int plv = Integer.parseInt(object.get("plv").toString());
+	// if (plv >= 0 && plv < 1000) {
+	// code = 1;
+	// }
+	// if (plv >= 1000 && plv < 2000) {
+	// code = 2;
+	// }
+	// if (plv >= 2000 && plv < 3000) {
+	// code = 3;
+	// }
+	// if (plv >= 30000) {
+	// code = 4;
+	// }
+	// return code;
+	// }
 
 	public String resultMessage(int num, String message) {
 		String msg = "";
@@ -362,6 +392,9 @@ public class userModel {
 			break;
 		case 9:
 			msg = "用户名或密码错误";
+			break;
+		case 10:
+			msg = "没有操作权限";
 			break;
 		default:
 			msg = "其他操作异常";

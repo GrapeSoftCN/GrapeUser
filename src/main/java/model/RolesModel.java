@@ -38,8 +38,7 @@ public class RolesModel {
 	}
 
 	public int update(String id, String ownid, JSONObject object) {
-		return role.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object)
-				.update() != null ? 0 : 99;
+		return role.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
 	}
 
 	/**
@@ -55,15 +54,12 @@ public class RolesModel {
 		if (object.containsKey("fatherid") && object.containsKey("sort")) {
 			_obj.put("fatherid", object.get("fatherid"));
 			_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
-			code = role.eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0
-					: 99;
+			code = role.eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
 		} else {
 			if (object.containsKey("fatherid")) {
-				code = setFatherId(object.get("_id").toString(), object.get("fatherid")
-						.toString());
+				code = setFatherId(object.get("_id").toString(), object.get("fatherid").toString());
 			} else {
-				code = setsort(object.get("_id").toString(), Integer.parseInt(object.get("sort")
-						.toString()));
+				code = setsort(object.get("_id").toString(), Integer.parseInt(object.get("sort").toString()));
 			}
 		}
 		return code;
@@ -78,30 +74,32 @@ public class RolesModel {
 
 	public JSONObject page(int idx, int pageSize) {
 		JSONArray array = role.page(idx, pageSize);
-		return page2Json(role,idx, pageSize, array);
+		return page2Json(role, idx, pageSize, array);
 	}
 
-	public JSONObject page(int idx, int pageSize,String ownid) {
+	public JSONObject page(int idx, int pageSize, String ownid) {
 		JSONArray array = role.eq("ownid", ownid).page(idx, pageSize);
-		return page2Json(role,idx, pageSize, array);
+		return page2Json(role, idx, pageSize, array);
 	}
+
 	public JSONObject page(int idx, int pageSize, JSONObject object) {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
 		JSONArray array = role.page(idx, pageSize);
-		return page2Json(role,idx, pageSize, array);
+		return page2Json(role, idx, pageSize, array);
 	}
-	public JSONObject page(int idx, int pageSize, JSONObject object,String ownid) {
+
+	public JSONObject page(int idx, int pageSize, JSONObject object, String ownid) {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
 		JSONArray array = role.eq("ownid", ownid).page(idx, pageSize);
-		return page2Json(role,idx, pageSize, array);
+		return page2Json(role, idx, pageSize, array);
 	}
 
 	@SuppressWarnings("unchecked")
-	public JSONObject page2Json(DBHelper role,int idx, int pageSize,JSONArray array) {
+	public JSONObject page2Json(DBHelper role, int idx, int pageSize, JSONArray array) {
 		JSONObject object = new JSONObject();
 		object.put("totalSize", (int) Math.ceil((double) role.count() / pageSize));
 		object.put("currentPage", idx);
@@ -109,6 +107,7 @@ public class RolesModel {
 		object.put("data", array);
 		return object;
 	}
+
 	public int delete(String id) {
 		return role.eq("_id", new ObjectId(id)).delete() != null ? 0 : 99;
 	}
@@ -134,7 +133,16 @@ public class RolesModel {
 		_obj.put("fatherid", fatherid);
 		return role.eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0 : 99;
 	}
+	public int setPlv(String id, String plv) {
+		JSONObject _obj = new JSONObject();
+		_obj.put("plv", plv);
+		return role.eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0 : 99;
+	}
 
+	//获取角色plv
+	public JSONObject getRole(String ugid) {
+		return role.eq("_id", new ObjectId(ugid)).find();
+	}
 	@SuppressWarnings("unchecked")
 	public JSONObject addMap(HashMap<String, Object> map, JSONObject object) {
 		if (map.entrySet() != null) {

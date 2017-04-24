@@ -27,7 +27,7 @@ public class user {
 		defcol.put("state", 0);
 		defcol.put("isdelete", 0);
 		defcol.put("isvisble", 0);
-		defcol.put("plv", 0);
+		defcol.put("plv", 1000);
 	}
 
 	/**
@@ -116,5 +116,4 @@ public class user {
 	public String UserBatchDelect(String ids) {
 		return usermodel.resultMessage(usermodel.delect(ids.split(",")), "批量操作成功");
 	}
-	
 }

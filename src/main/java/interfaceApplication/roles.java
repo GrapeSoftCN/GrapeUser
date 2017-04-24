@@ -21,7 +21,7 @@ public class roles {
 		defcol.put("sort", 0);
 		defcol.put("fatherid", 0);
 		defcol.put("wbid", 0);
-		defcol.put("plv", 0); // 权限值
+		defcol.put("plv", 1000); // 权限值
 	}
 
 	public String RoleInsert(String roleInfo) {
@@ -100,5 +100,13 @@ public class roles {
 
 	public String RoleSetFatherId(String id, String fatherid) {
 		return rolesModel.resultMessage(rolesModel.setFatherId(id, fatherid), "上级用户组设置成功");
+	}
+	public String RoleSetPlv(String id, String plv) {
+		return rolesModel.resultMessage(rolesModel.setPlv(id, plv), "权限设置成功");
+	}
+	
+	//根据角色id获取角色信息
+	public String getRole(String ugid) {
+		return rolesModel.resultMessage(0, rolesModel.getRole(ugid).toJSONString());
 	}
 }
