@@ -15,7 +15,12 @@ public class roles {
 	private RolesModel rolesModel = new RolesModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
 	private JSONObject _obj = new JSONObject();
-
+//	private static int userPlv;
+//	
+//	static{
+//		userPlv = Integer.parseInt(execRequest._run("GrapeAuth/Auth/getUserPlv", null).toString());
+//	}
+	
 	public roles() {
 		defcol.put("ownid", 0);
 		defcol.put("sort", 0);
@@ -25,19 +30,20 @@ public class roles {
 	}
 
 	public String RoleInsert(String roleInfo) {
+//		String code = execRequest._run("GrapeAuth/Auth/InsertPLV", null).toString();
+//		if (!"0".equals(code)) {
+//			return rolesModel.resultMessage(3, "");
+//		}
 		JSONObject object = rolesModel.addMap(defcol, JSONHelper.string2json(roleInfo));
 		return rolesModel.resultMessage(rolesModel.insert(object), "新增角色成功");
 	}
 
 	public String RoleUpdate(String id, String roleInfo) {
+//		int uPlv = Integer.parseInt(rolesModel.getRole(id).get("uPlv").toString());
+//		if (userPlv<uPlv) {
+//			return rolesModel.resultMessage(4, "");
+//		}
 		return rolesModel.resultMessage(rolesModel.update(id, JSONHelper.string2json(roleInfo)), "修改角色成功");
-	}
-
-	public String Updates(String id, String roleInfo) {
-		JSONObject object = JSONHelper.string2json(roleInfo);
-		String ownid = object.get("ownid").toString();
-		object.remove("ownid");
-		return rolesModel.resultMessage(rolesModel.update(id, ownid, object), "组织机构修改成功");
 	}
 
 	/**
@@ -53,13 +59,11 @@ public class roles {
 			if (code != 0) {
 				return rolesModel.resultMessage(2, "");
 			}
+			
 			code = rolesModel.update((JSONObject) array.get(i));
 		}
 		return rolesModel.resultMessage(code, "设置顺序或层级成功");
 	}
-	// public String RoleSelect() {
-	// return rolesModel.resultMessage(0,rolesModel.select().toString());
-	// }
 
 	public String RoleSearch(String roleInfo) {
 		_obj.put("records", rolesModel.select(JSONHelper.string2json(roleInfo)));
@@ -67,6 +71,10 @@ public class roles {
 	}
 
 	public String RoleDelete(String id) {
+//		int dPlv = Integer.parseInt(rolesModel.getRole(id).get("dPlv").toString());
+//		if (userPlv<dPlv) {
+//			return rolesModel.resultMessage(4, "");
+//		}
 		return rolesModel.resultMessage(rolesModel.delete(id), "角色删除成功");
 	}
 

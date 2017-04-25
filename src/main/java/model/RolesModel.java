@@ -30,17 +30,22 @@ public class RolesModel {
 		if (!_form.checkRuleEx(object)) {
 			return 1; // 必填字段没有填
 		}
-		return role.data(object).insertOnce() != null ? 0 : 99;
+		return bindfield(object).data(object).insertOnce() != null ? 0 : 99;
 	}
 
 	public int update(String id, JSONObject object) {
-		return role.eq("_id", new ObjectId(id)).data(object).update() != null ? 0 : 99;
+		return bindfield(object).eq("_id", new ObjectId(id)).data(object).update() != null ? 0 : 99;
 	}
 
-	public int update(String id, String ownid, JSONObject object) {
-		return role.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
+	//是否分表
+	public DBHelper bindfield(JSONObject object) {
+		if (object.containsKey("ownid")) {
+			if (!"0".equals(object.get("ownid").toString())) {
+				role = (DBHelper) role.bind(object.get("ownid").toString());
+			}
+		}
+		return role;
 	}
-
 	/**
 	 * 批量修改 设置排序值，调整层级关系
 	 * 
@@ -54,7 +59,7 @@ public class RolesModel {
 		if (object.containsKey("fatherid") && object.containsKey("sort")) {
 			_obj.put("fatherid", object.get("fatherid"));
 			_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
-			code = role.eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
+			code = bindfield(object).eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
 		} else {
 			if (object.containsKey("fatherid")) {
 				code = setFatherId(object.get("_id").toString(), object.get("fatherid").toString());
@@ -69,7 +74,7 @@ public class RolesModel {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
-		return role.limit(20).select();
+		return bindfield(object).limit(20).select();
 	}
 
 	public JSONObject page(int idx, int pageSize) {
@@ -78,7 +83,7 @@ public class RolesModel {
 	}
 
 	public JSONObject page(int idx, int pageSize, String ownid) {
-		JSONArray array = role.eq("ownid", ownid).page(idx, pageSize);
+		JSONArray array = role.bind(ownid).page(idx, pageSize);
 		return page2Json(role, idx, pageSize, array);
 	}
 
@@ -94,8 +99,8 @@ public class RolesModel {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
-		JSONArray array = role.eq("ownid", ownid).page(idx, pageSize);
-		return page2Json(role, idx, pageSize, array);
+		JSONArray array = role.bind(ownid).page(idx, pageSize);
+		return page2Json((DBHelper)role.bind(ownid), idx, pageSize, array);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -133,6 +138,7 @@ public class RolesModel {
 		_obj.put("fatherid", fatherid);
 		return role.eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0 : 99;
 	}
+	@SuppressWarnings("unchecked")
 	public int setPlv(String id, String plv) {
 		JSONObject _obj = new JSONObject();
 		_obj.put("plv", plv);
@@ -143,6 +149,7 @@ public class RolesModel {
 	public JSONObject getRole(String ugid) {
 		return role.eq("_id", new ObjectId(ugid)).find();
 	}
+	
 	@SuppressWarnings("unchecked")
 	public JSONObject addMap(HashMap<String, Object> map, JSONObject object) {
 		if (map.entrySet() != null) {
@@ -173,6 +180,15 @@ public class RolesModel {
 			break;
 		case 2:
 			msg = "设置排序或层级失败";
+			break;
+		case 3:
+			msg = "没有创建数据权限，请联系管理员进行权限调整";
+			break;
+		case 4:
+			msg = "没有修改数据权限，请联系管理员进行权限调整";
+			break;
+		case 5:
+			msg = "没有删除数据权限，请联系管理员进行权限调整";
 			break;
 		default:
 			msg = "其他操作异常";

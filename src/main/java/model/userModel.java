@@ -23,8 +23,6 @@ import session.session;
 public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
-	private String sessionvalue = null;
-	// private HashMap<String, Object> defcol = new HashMap<>();
 	static {
 		users = new DBHelper("mongodb", "user");
 		_form = users.getChecker();
@@ -120,24 +118,19 @@ public class userModel {
 		JSONObject object = users.eq(_checkField, username).eq("password", password).find();
 		if (object != null) {
 			session session = new session();
-			// if (sessionvalue != null) {
-			// return resultMessage(8, "");
-			// }
-			//
-			// sessionvalue = session.insertSession(username,
-			// object.toString());
-			// object.put("sid", sessionvalue);
-			// object.remove("password");
 			session.setget(username, object.toString());
+//			// 查询用户所属的网站
+//			String webinfo = execRequest._run("GrapeWebInfo/WebInfo/WebFindById/s:" + object.get("wbid").toString(), null)
+//					.toString();
+//			String wbgid = JSONHelper.string2json(webinfo).get("wbgid").toString();
+//			// 查询该网站所属的站群
+//			String webg = execRequest._run("GrapeWebInfo/WebGroup/WebGroupFindBywbid/s:"+wbgid, null).toString();
 		}
 		return object != null ? object.toString() : null;
 	}
 
 	public void logout(String UserName) {
 		session session = new session();
-		// session.delete(sessionvalue);
-		// System.out.println((String)session.get(UserName));
-		// session.deleteSession(UserName);
 		session.delete(UserName);
 	}
 
@@ -219,7 +212,6 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize) {
 		JSONArray array = users.page(idx, pageSize);
-		@SuppressWarnings("unchecked")
 		JSONObject object = new JSONObject();
 		object.put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
 		object.put("currentPage", idx);
@@ -234,7 +226,6 @@ public class userModel {
 			users.eq(object2.toString(), userInfo.get(object2.toString()));
 		}
 		JSONArray array = users.page(idx, pageSize);
-		@SuppressWarnings("unchecked")
 		JSONObject object = new JSONObject();
 		object.put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
 		object.put("currentPage", idx);
@@ -277,12 +268,8 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public boolean checkEmail(String email) {
 		_form.putRule("email", formdef.email);
-		JSONObject _obj = new JSONObject() {
-			private static final long serialVersionUID = 1L;
-			{
-				put("email", email);
-			}
-		};
+		JSONObject _obj = new JSONObject();
+		_obj.put("email", email);
 		return _form.checkRule(_obj);
 	}
 
@@ -330,11 +317,11 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
-//	public String getUserPlv(String username) {
-//		session session = new session();
-//		// 从缓存中获取用户plv
-//		String userinfo = session.get(username).toString();
-//	}
+	// public String getUserPlv(String username) {
+	// session session = new session();
+	// // 从缓存中获取用户plv
+	// String userinfo = session.get(username).toString();
+	// }
 	// 操作权限验证
 	// public int CheckPlv() {
 	// int code = 0;
