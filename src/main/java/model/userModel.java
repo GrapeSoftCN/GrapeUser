@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
@@ -101,6 +102,8 @@ public class userModel {
 		return login(username, userinfo.get("password").toString(), loginMode);
 	}
 
+	//用户登录，同时获取所管理网站的id及网站名称
+	@SuppressWarnings("unchecked")
 	private String login(String username, String password, int loginMode) {
 		String _checkField = "";
 		switch (loginMode) {
@@ -118,17 +121,32 @@ public class userModel {
 		JSONObject object = users.eq(_checkField, username).eq("password", password).find();
 		if (object != null) {
 			session session = new session();
+			String wbid = object.get("wbid").toString();
+			JSONArray array = getWbID(wbid, object);
+			object.remove("wbid");
+			object.remove("password");
+			object.put("webinfo", array);
 			session.setget(username, object.toString());
-//			// 查询用户所属的网站
-//			String webinfo = execRequest._run("GrapeWebInfo/WebInfo/WebFindById/s:" + object.get("wbid").toString(), null)
-//					.toString();
-//			String wbgid = JSONHelper.string2json(webinfo).get("wbgid").toString();
-//			// 查询该网站所属的站群
-//			String webg = execRequest._run("GrapeWebInfo/WebGroup/WebGroupFindBywbid/s:"+wbgid, null).toString();
 		}
 		return object != null ? object.toString() : null;
 	}
 
+	@SuppressWarnings("unchecked")
+	private JSONArray getWbID(String wbid,JSONObject object){
+		JSONArray webs = new JSONArray();
+		JSONObject object2;
+		String webinfo = execRequest._run("GrapeWebInfo/WebInfo/WebFindById/s:"+wbid, null).toString();
+		JSONArray array = (JSONArray) JSONValue.parse(webinfo);
+		for (int i = 0,len = array.size(); i < len; i++) {
+			JSONObject objects = new JSONObject();
+			object2 = (JSONObject) array.get(i);
+			JSONObject objid = (JSONObject) object2.get("_id");
+			objects.put("wbid", objid.get("$oid").toString());  
+			objects.put("wbname", object2.get("title").toString());
+			webs.add(objects);
+		}
+		return webs;
+	}
 	public void logout(String UserName) {
 		session session = new session();
 		session.delete(UserName);

@@ -15,7 +15,6 @@ public class user {
 	private JSONObject _obj = new JSONObject();
 
 	public user() {
-		defcol.put("uid", null);
 		defcol.put("sex", 1);
 		defcol.put("birthday", 0);
 		defcol.put("point", 0);
