@@ -75,13 +75,6 @@ public class user {
 		return usermodel.resultMessage(usermodel.edit(_id, JSONHelper.string2json(userInfo)),
 				"用户信息修改成功");
 	}
-	public String UserUpdate(String _id, String userInfo) {
-		JSONObject object = JSONHelper.string2json(userInfo);
-		String ownid = object.get("ownid").toString();
-		object.remove("ownid");
-		return usermodel.resultMessage(usermodel.Update(_id, ownid, object),
-				"用户修改成功");
-	}
 
 	public String UserSelect() {
 		_obj.put("records", usermodel.select());
@@ -114,5 +107,9 @@ public class user {
 
 	public String UserBatchDelect(String ids) {
 		return usermodel.resultMessage(usermodel.delect(ids.split(",")), "批量操作成功");
+	}
+	public String AddLeader(String info) {
+		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(info));
+		return usermodel.resultMessage(usermodel.register(object), "新增用户成功");
 	}
 }

@@ -24,8 +24,13 @@ import session.session;
 public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
+	private static String wbid; 
+	
 	static {
-		users = new DBHelper("mongodb", "user");
+		session session = new session();
+		String info = session.get("username").toString();
+		wbid = JSONHelper.string2json(info).get("currentWeb").toString();
+		users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
 		_form = users.getChecker();
 	}
 
@@ -93,16 +98,11 @@ public class userModel {
 				return resultMessage(6, "");
 			}
 		}
-		// JSONObject _obj = login(username,
-		// userinfo.get("password").toString(),
-		// loginMode);
-		// if (_obj!=null) {
-		// _obj.remove("password");
-		// }
 		return login(username, userinfo.get("password").toString(), loginMode);
 	}
 
-	//用户登录，同时获取所管理网站的id及网站名称
+	//用户登录，默认登录用户能够管理的所有站点的第一个站点，
+	//同时获取所管理网站的id及网站名称
 	@SuppressWarnings("unchecked")
 	private String login(String username, String password, int loginMode) {
 		String _checkField = "";
@@ -125,8 +125,12 @@ public class userModel {
 			JSONArray array = getWbID(wbid, object);
 			object.remove("wbid");
 			object.remove("password");
+			if (wbid.contains(",")) {
+				wbid= wbid.split(",")[0];
+			}
+			object.put("currentWeb",wbid);
 			object.put("webinfo", array);
-			session.setget(username, object.toString());
+			session.setget("username", object.toString());
 		}
 		return object != null ? object.toString() : null;
 	}
@@ -149,7 +153,7 @@ public class userModel {
 	}
 	public void logout(String UserName) {
 		session session = new session();
-		session.delete(UserName);
+		session.delete("username");
 	}
 
 	public long getpoint_username(String username) {
@@ -191,7 +195,9 @@ public class userModel {
 				return 6;
 			}
 		}
-		userInfo.remove("password");
+		if (userInfo.containsKey("password")) {
+			userInfo.remove("password");
+		}
 		JSONObject object = users.eq("_id", new ObjectId(_id)).data(userInfo).update();
 		return object != null ? 0 : 99;
 	}
@@ -335,35 +341,37 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
-	// public String getUserPlv(String username) {
-	// session session = new session();
-	// // 从缓存中获取用户plv
-	// String userinfo = session.get(username).toString();
-	// }
-	// 操作权限验证
-	// public int CheckPlv() {
-	// int code = 0;
-	// session session = new session();
-	// JSONObject object =
-	// JSONHelper.string2json(session.get(sessionvalue).toString());
-	// // JSONObject object = users.eq("id", Username).field("plv").find();
-	// // String plv = object.get("plv").toString();
-	// // 判断plv的值
-	// int plv = Integer.parseInt(object.get("plv").toString());
-	// if (plv >= 0 && plv < 1000) {
-	// code = 1;
-	// }
-	// if (plv >= 1000 && plv < 2000) {
-	// code = 2;
-	// }
-	// if (plv >= 2000 && plv < 3000) {
-	// code = 3;
-	// }
-	// if (plv >= 30000) {
-	// code = 4;
-	// }
-	// return code;
-	// }
+	@SuppressWarnings("unchecked")
+	public int addUser(JSONObject _userInfo) {
+		_form.removeRule("registerip", formdef.notNull);
+		_form.removeRule("password", formdef.notNull);
+		if (!_form.checkRuleEx(_userInfo)) {
+			return 1; // 必填字段没有填
+		}
+		String userName = _userInfo.get("id").toString();
+		if (!checkUserName(userName)) {
+			return 2;// 用户名不合法
+		}
+		if (findUserNameByID(userName) != null) {
+			return 3; // 用户名已存在
+		}
+		String email = _userInfo.get("email").toString();
+		if (!checkEmail(email)) {
+			return 4; // email格式不正确
+		}
+		if (findUserNameByEmail(email) != null) {
+			return 5; // email已存在
+		}
+		String phoneno = _userInfo.get("mobphone").toString();
+		if (!checkMobileNumber(phoneno)) {
+			return 6; // 手机号格式错误
+		}
+		if (findUserNameByMoblie(phoneno) != null) {
+			return 7; // 手机号已经被注册
+		}
+		_userInfo.put("wbid", wbid);
+		return users.data(_userInfo).insertOnce() != null ? 0 : 99;
+	}
 
 	public String resultMessage(int num, String message) {
 		String msg = "";

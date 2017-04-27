@@ -9,23 +9,24 @@ import org.json.simple.JSONValue;
 
 import esayhelper.JSONHelper;
 import model.RolesModel;
+import session.session;
 
 @SuppressWarnings("unchecked")
 public class roles {
 	private RolesModel rolesModel = new RolesModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
 	private JSONObject _obj = new JSONObject();
+	private static String wbid;
 //	private static int userPlv;
 //	
 //	static{
-//		userPlv = Integer.parseInt(execRequest._run("GrapeAuth/Auth/getUserPlv", null).toString());
+		//userPlv = Integer.parseInt(execRequest._run("GrapeAuth/Auth/getUserPlv", null).toString());
 //	}
 	
 	public roles() {
 		defcol.put("ownid", 0);
 		defcol.put("sort", 0);
 		defcol.put("fatherid", 0);
-		defcol.put("wbid", 0);
 		defcol.put("plv", 1000); // 权限值
 	}
 
@@ -87,18 +88,8 @@ public class roles {
 		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
 	}
 
-	public String Page(int idx, int pageSize, String ownid) {
-		_obj.put("records", rolesModel.page(idx, pageSize, ownid));
-		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
-	}
-
 	public String RolePageBy(int idx, int pageSize, String roleInfo) {
 		_obj.put("records", rolesModel.page(idx, pageSize, JSONHelper.string2json(roleInfo)));
-		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
-	}
-
-	public String PageBy(int idx, int pageSize, String roleInfo, String ownid) {
-		_obj.put("records", rolesModel.page(idx, pageSize, JSONHelper.string2json(roleInfo), ownid));
 		return StringEscapeUtils.unescapeJava(rolesModel.resultMessage(0, _obj.toString()));
 	}
 

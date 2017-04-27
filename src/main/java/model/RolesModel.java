@@ -11,14 +11,21 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import esayhelper.DBHelper;
+import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.jGrapeFW_Message;
+import session.session;
 
 public class RolesModel {
 	private static DBHelper role;
 	private static formHelper _form;
+	private static String wbid;
+	
 	static {
-		role = new DBHelper("mongodb", "role");
+		session session = new session();
+		String info = session.get("username").toString();
+		wbid = JSONHelper.string2json(info).get("currentWeb").toString();
+		role = (DBHelper) new DBHelper("mongodb", "role").bind(wbid);
 		_form = role.getChecker();
 	}
 
@@ -26,26 +33,28 @@ public class RolesModel {
 		_form.putRule("name", formHelper.formdef.notNull);
 	}
 
+	@SuppressWarnings("unchecked")
 	public int insert(JSONObject object) {
+		object.put("wbid", wbid);
 		if (!_form.checkRuleEx(object)) {
 			return 1; // 必填字段没有填
 		}
-		return bindfield(object).data(object).insertOnce() != null ? 0 : 99;
+		return role.data(object).insertOnce() != null ? 0 : 99;
 	}
 
 	public int update(String id, JSONObject object) {
-		return bindfield(object).eq("_id", new ObjectId(id)).data(object).update() != null ? 0 : 99;
+		return role.eq("_id", new ObjectId(id)).data(object).update() != null ? 0 : 99;
 	}
 
 	//是否分表
-	public DBHelper bindfield(JSONObject object) {
-		if (object.containsKey("ownid")) {
-			if (!"0".equals(object.get("ownid").toString())) {
-				role = (DBHelper) role.bind(object.get("ownid").toString());
-			}
-		}
-		return role;
-	}
+//	public DBHelper bindfield(JSONObject object) {
+//		if (object.containsKey("wbid")) {
+//			if (!"0".equals(object.get("ownid").toString())) {
+//				role = (DBHelper) role.bind(object.get("ownid").toString());
+//			}
+//		}
+//		return role;
+//	}
 	/**
 	 * 批量修改 设置排序值，调整层级关系
 	 * 
@@ -59,7 +68,7 @@ public class RolesModel {
 		if (object.containsKey("fatherid") && object.containsKey("sort")) {
 			_obj.put("fatherid", object.get("fatherid"));
 			_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
-			code = bindfield(object).eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
+			code = role.eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
 		} else {
 			if (object.containsKey("fatherid")) {
 				code = setFatherId(object.get("_id").toString(), object.get("fatherid").toString());
@@ -74,43 +83,32 @@ public class RolesModel {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
-		return bindfield(object).limit(20).select();
-	}
-
-	public JSONObject page(int idx, int pageSize) {
-		JSONArray array = role.page(idx, pageSize);
-		return page2Json(role, idx, pageSize, array);
-	}
-
-	public JSONObject page(int idx, int pageSize, String ownid) {
-		JSONArray array = role.bind(ownid).page(idx, pageSize);
-		return page2Json(role, idx, pageSize, array);
-	}
-
-	public JSONObject page(int idx, int pageSize, JSONObject object) {
-		for (Object object2 : object.keySet()) {
-			role.eq(object2.toString(), object.get(object2.toString()));
-		}
-		JSONArray array = role.page(idx, pageSize);
-		return page2Json(role, idx, pageSize, array);
-	}
-
-	public JSONObject page(int idx, int pageSize, JSONObject object, String ownid) {
-		for (Object object2 : object.keySet()) {
-			role.eq(object2.toString(), object.get(object2.toString()));
-		}
-		JSONArray array = role.bind(ownid).page(idx, pageSize);
-		return page2Json((DBHelper)role.bind(ownid), idx, pageSize, array);
+		return role.limit(20).select();
 	}
 
 	@SuppressWarnings("unchecked")
-	public JSONObject page2Json(DBHelper role, int idx, int pageSize, JSONArray array) {
+	public JSONObject page(int idx, int pageSize) {
+		JSONArray array = role.page(idx, pageSize);
 		JSONObject object = new JSONObject();
 		object.put("totalSize", (int) Math.ceil((double) role.count() / pageSize));
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
 		return object;
+	}
+
+	@SuppressWarnings("unchecked")
+	public JSONObject page(int idx, int pageSize, JSONObject object) {
+		for (Object object2 : object.keySet()) {
+			role.eq(object2.toString(), object.get(object2.toString()));
+		}
+		JSONArray array = role.page(idx, pageSize);
+		JSONObject objects = new JSONObject();
+		objects.put("totalSize", (int) Math.ceil((double) role.count() / pageSize));
+		objects.put("currentPage", idx);
+		objects.put("pageSize", pageSize);
+		objects.put("data", array);
+		return objects;
 	}
 
 	public int delete(String id) {
