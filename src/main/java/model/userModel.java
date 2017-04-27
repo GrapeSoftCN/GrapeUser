@@ -24,13 +24,16 @@ import session.session;
 public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
-	private static String wbid; 
+//	private static String wbid; 
 	
 	static {
-		session session = new session();
-		String info = session.get("username").toString();
-		wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-		users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
+//		session session = new session();
+//		if (session!=null) {
+//			String info = session.get("username").toString();
+//			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
+//			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
+//		}
+		users = (DBHelper) new DBHelper("mongodb", "user");
 		_form = users.getChecker();
 	}
 
@@ -341,7 +344,6 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
-	@SuppressWarnings("unchecked")
 	public int addUser(JSONObject _userInfo) {
 		_form.removeRule("registerip", formdef.notNull);
 		_form.removeRule("password", formdef.notNull);
@@ -369,7 +371,7 @@ public class userModel {
 		if (findUserNameByMoblie(phoneno) != null) {
 			return 7; // 手机号已经被注册
 		}
-		_userInfo.put("wbid", wbid);
+//		_userInfo.put("wbid", wbid);
 		return users.data(_userInfo).insertOnce() != null ? 0 : 99;
 	}
 
