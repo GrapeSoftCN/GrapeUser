@@ -16,7 +16,6 @@ public class roles {
 	private RolesModel rolesModel = new RolesModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
 	private JSONObject _obj = new JSONObject();
-	private static String wbid;
 //	private static int userPlv;
 //	
 //	static{

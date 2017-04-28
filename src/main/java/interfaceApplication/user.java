@@ -50,9 +50,15 @@ public class user {
 	 * @return 除密码之外的数据
 	 */
 	public String UserLogin(String userInfo) {
+		String mString = "";
 		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
-		_obj.put("records", JSONHelper.string2json(usersinfo));
-		return usermodel.resultMessage(usersinfo != null ? 0 : 9, _obj.toString());
+		if (!usersinfo.contains("errorcode")) {
+			_obj.put("records", JSONHelper.string2json(usersinfo));
+			mString = usermodel.resultMessage(usersinfo != null ? 0 : 9, _obj.toString());
+		}else{
+			mString = usersinfo;
+		}
+		return mString;
 	}
 
 	public String UserLogout(String UserName) {

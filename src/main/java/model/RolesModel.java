@@ -116,11 +116,11 @@ public class RolesModel {
 	}
 
 	public int delete(String[] arr) {
-		role = (DBHelper) role.or();
+		role.or();
 		for (String string : arr) {
 			role.eq("_id", string);
 		}
-		return role.delete() != null ? 0 : 99;
+		return role.deleteAll() != arr.length ? 0 : 99;
 	}
 
 	@SuppressWarnings("unchecked")

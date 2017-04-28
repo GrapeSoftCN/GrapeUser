@@ -7,6 +7,7 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -24,16 +25,16 @@ import session.session;
 public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
-//	private static String wbid; 
-	
+	private static String wbid;
+	private static session session = new session();
 	static {
-//		session session = new session();
-//		if (session!=null) {
-//			String info = session.get("username").toString();
-//			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-//			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
-//		}
-		users = (DBHelper) new DBHelper("mongodb", "user");
+		if (session.get("username") != null) {
+			String info = session.get("username").toString();
+			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
+			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
+		}else{
+			users = (DBHelper) new DBHelper("mongodb", "user");
+		}
 		_form = users.getChecker();
 	}
 
@@ -78,6 +79,9 @@ public class userModel {
 	}
 
 	public String checkLogin(JSONObject userinfo) {
+		if (session.get("username")!=null) {
+			return resultMessage(8, "");
+		}
 		int loginMode = 0;
 		String username = "";
 		if (userinfo.containsKey("loginmode")) {
@@ -104,8 +108,8 @@ public class userModel {
 		return login(username, userinfo.get("password").toString(), loginMode);
 	}
 
-	//用户登录，默认登录用户能够管理的所有站点的第一个站点，
-	//同时获取所管理网站的id及网站名称
+	// 用户登录，默认登录用户能够管理的所有站点的第一个站点，
+	// 同时获取所管理网站的id及网站名称
 	@SuppressWarnings("unchecked")
 	private String login(String username, String password, int loginMode) {
 		String _checkField = "";
@@ -123,15 +127,14 @@ public class userModel {
 		password = codec.md5(password);
 		JSONObject object = users.eq(_checkField, username).eq("password", password).find();
 		if (object != null) {
-			session session = new session();
 			String wbid = object.get("wbid").toString();
 			JSONArray array = getWbID(wbid, object);
 			object.remove("wbid");
 			object.remove("password");
 			if (wbid.contains(",")) {
-				wbid= wbid.split(",")[0];
+				wbid = wbid.split(",")[0];
 			}
-			object.put("currentWeb",wbid);
+			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
 			session.setget("username", object.toString());
 		}
@@ -139,21 +142,22 @@ public class userModel {
 	}
 
 	@SuppressWarnings("unchecked")
-	private JSONArray getWbID(String wbid,JSONObject object){
+	private JSONArray getWbID(String wbid, JSONObject object) {
 		JSONArray webs = new JSONArray();
 		JSONObject object2;
-		String webinfo = execRequest._run("GrapeWebInfo/WebInfo/WebFindById/s:"+wbid, null).toString();
+		String webinfo = execRequest._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null).toString();
 		JSONArray array = (JSONArray) JSONValue.parse(webinfo);
-		for (int i = 0,len = array.size(); i < len; i++) {
+		for (int i = 0, len = array.size(); i < len; i++) {
 			JSONObject objects = new JSONObject();
 			object2 = (JSONObject) array.get(i);
 			JSONObject objid = (JSONObject) object2.get("_id");
-			objects.put("wbid", objid.get("$oid").toString());  
+			objects.put("wbid", objid.get("$oid").toString());
 			objects.put("wbname", object2.get("title").toString());
 			webs.add(objects);
 		}
 		return webs;
 	}
+
 	public void logout(String UserName) {
 		session session = new session();
 		session.delete("username");
@@ -271,8 +275,7 @@ public class userModel {
 		for (int i = 0; i < arr.length; i++) {
 			users.eq("_id", arr[i]);
 		}
-		JSONObject object = users.delete();
-		return object != null ? 0 : 99;
+		return users.deleteAll() == arr.length ?0:99;
 	}
 
 	public JSONObject findUserNameByID(String userName) {
@@ -303,12 +306,8 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public boolean checkMobileNumber(String mobile) {
 		_form.putRule("mobphone", formdef.mobile);
-		JSONObject _obj = new JSONObject() {
-			private static final long serialVersionUID = 1L;
-			{
-				put("mobphone", mobile);
-			}
-		};
+		JSONObject _obj = new JSONObject();
+		_obj.put("mobphone", mobile);
 		return _form.checkRule(_obj);
 	}
 
@@ -345,6 +344,9 @@ public class userModel {
 	}
 
 	public int addUser(JSONObject _userInfo) {
+		// session session = new session();
+		// String info = session.get("username").toString();
+		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
 		_form.removeRule("registerip", formdef.notNull);
 		_form.removeRule("password", formdef.notNull);
 		if (!_form.checkRuleEx(_userInfo)) {
@@ -371,7 +373,7 @@ public class userModel {
 		if (findUserNameByMoblie(phoneno) != null) {
 			return 7; // 手机号已经被注册
 		}
-//		_userInfo.put("wbid", wbid);
+		// _userInfo.put("wbid", wbid);
 		return users.data(_userInfo).insertOnce() != null ? 0 : 99;
 	}
 
