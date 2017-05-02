@@ -14,7 +14,6 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import esayhelper.DBHelper;
-import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.formHelper.formdef;
 import rpc.execRequest;
@@ -25,16 +24,18 @@ import session.session;
 public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
-	private static String wbid;
+	private JSONObject _obj = new JSONObject();
+//	private static String wbid;
 	private static session session = new session();
 	static {
-		if (session.get("username") != null) {
-			String info = session.get("username").toString();
-			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
-		}else{
+//		String name = execRequest.getChannelValue("").toString();
+//		if (session.get(name) != null) {
+//			String info = session.get("username").toString();
+//			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
+//			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
+//		}else{
 			users = (DBHelper) new DBHelper("mongodb", "user");
-		}
+//		}
 		_form = users.getChecker();
 	}
 
@@ -79,9 +80,9 @@ public class userModel {
 	}
 
 	public String checkLogin(JSONObject userinfo) {
-		if (session.get("username")!=null) {
-			return resultMessage(8, "");
-		}
+//		if (session.get((String) userinfo.get("username"))!=null) {
+//			return resultMessage(8, "");
+//		}
 		int loginMode = 0;
 		String username = "";
 		if (userinfo.containsKey("loginmode")) {
@@ -136,7 +137,7 @@ public class userModel {
 			}
 			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
-			session.setget("username", object.toString());
+			session.setget(username, object.toString());
 		}
 		return object != null ? object.toString() : null;
 	}
@@ -271,11 +272,11 @@ public class userModel {
 	}
 
 	public int delect(String[] arr) {
-		users = (DBHelper) users.or();
+		users.or();
 		for (int i = 0; i < arr.length; i++) {
-			users.eq("_id", arr[i]);
+			users.eq("_id", new ObjectId(arr[i]));
 		}
-		return users.deleteAll() == arr.length ?0:99;
+		return users.deleteAll() == arr.length ? 0 : 99;
 	}
 
 	public JSONObject findUserNameByID(String userName) {
@@ -377,6 +378,16 @@ public class userModel {
 		return users.data(_userInfo).insertOnce() != null ? 0 : 99;
 	}
 
+	@SuppressWarnings("unchecked")
+	public String resultMessage(JSONObject object) {
+		_obj.put("records", object);
+		return resultMessage(0, _obj.toString());
+	}
+	@SuppressWarnings("unchecked")
+	public String resultMessage(JSONArray array) {
+		_obj.put("records", array);
+		return resultMessage(0, _obj.toString());
+	}
 	public String resultMessage(int num, String message) {
 		String msg = "";
 		switch (num) {

@@ -6,7 +6,7 @@ import interfaceApplication.user;
 public class test {
 	public static void main(String[] args) {
 //		user user = new user();
-//		String userInfo ="{\"id\":\"test111\",\"password\":\"123\",\"loginmode\":0}";
+//		String userInfo ="{\"id\":\"test222\",\"password\":\"123\",\"loginmode\":0}";
 //		System.out.println(user.UserLogin(userInfo));
 //		String string = "{\"mobphone\":\"13515623654\"}";
 //		System.out.println(user.UserEdit("58edd57d1a4769cbf529e0f7", string));
@@ -18,5 +18,6 @@ public class test {
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
+//		System.out.println(new user().UserPage(1, 2));
 	}
 }

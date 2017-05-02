@@ -2,11 +2,11 @@ package interfaceApplication;
 
 import java.util.HashMap;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.json.simple.JSONObject;
 
 import esayhelper.JSONHelper;
 import model.userModel;
+import rpc.execRequest;
 
 @SuppressWarnings("unchecked")
 public class user {
@@ -83,28 +83,24 @@ public class user {
 	}
 
 	public String UserSelect() {
-		_obj.put("records", usermodel.select());
-		return StringEscapeUtils.unescapeJava(usermodel.resultMessage(0, _obj.toString()));
+		return usermodel.resultMessage(usermodel.select());
 	}
 
 	public String UserSearch(String userinfo) {
-		_obj.put("records", usermodel.select(JSONHelper.string2json(userinfo)));
-		return StringEscapeUtils.unescapeJava(usermodel.resultMessage(0, _obj.toString()));
+		return usermodel.resultMessage(usermodel.select(JSONHelper.string2json(userinfo)));
 	}
 	public String UserFind(String id) {
-		_obj.put("records", usermodel.select(id));
-		return StringEscapeUtils.unescapeJava(usermodel.resultMessage(0, _obj.toString()));
+		return usermodel.resultMessage(usermodel.select(id));
 	}
 
 	public String UserPage(int idx, int pageSize) {
-		_obj.put("records", usermodel.page(idx, pageSize));
-		return usermodel.resultMessage(0, _obj.toString());
+		System.out.println(execRequest.getChannelValue("userid").toString());
+		return usermodel.resultMessage(usermodel.page(idx, pageSize));
 	}
 
 	public String UserPageBy(int idx, int pageSize, String userinfo) {
 		JSONObject object = JSONHelper.string2json(userinfo);
-		_obj.put("records", usermodel.page(idx, pageSize, object));
-		return usermodel.resultMessage(0, _obj.toString());
+		return usermodel.resultMessage(usermodel.page(idx, pageSize, object));
 	}
 
 	public String UserDelect(String id) {
