@@ -80,9 +80,6 @@ public class userModel {
 	}
 
 	public String checkLogin(JSONObject userinfo) {
-//		if (session.get((String) userinfo.get("username"))!=null) {
-//			return resultMessage(8, "");
-//		}
 		int loginMode = 0;
 		String username = "";
 		if (userinfo.containsKey("loginmode")) {
@@ -190,9 +187,6 @@ public class userModel {
 				return 2;
 			}
 		}
-		// if (!_form.checkRuleEx(userInfo)) {
-		// return 1;
-		// }
 		if (userInfo.containsKey("email")) {
 			if (!checkEmail(userInfo.get("email").toString())) {
 				return 4;
@@ -238,9 +232,6 @@ public class userModel {
 		return users.eq("id", id).find();
 	}
 
-	// public JSONObject find(String ownid) {
-	// return users.eq("ownid", ownid).find();
-	// }
 	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize) {
 		JSONArray array = users.page(idx, pageSize);
