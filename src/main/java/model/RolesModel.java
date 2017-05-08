@@ -25,7 +25,7 @@ public class RolesModel {
 		// session session = new session();
 		// String info = session.get("username").toString();
 		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-		role = new DBHelper("mongodb", "role");
+		role = new DBHelper("mongodb", "userGroup");
 		_form = role.getChecker();
 	}
 

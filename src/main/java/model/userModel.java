@@ -34,7 +34,7 @@ public class userModel {
 //			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
 //			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
 //		}else{
-			users = (DBHelper) new DBHelper("mongodb", "user");
+			users = (DBHelper) new DBHelper("mongodb", "userList");
 //		}
 		_form = users.getChecker();
 	}
