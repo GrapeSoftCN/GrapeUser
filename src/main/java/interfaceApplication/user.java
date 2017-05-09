@@ -94,7 +94,6 @@ public class user {
 	}
 
 	public String UserPage(int idx, int pageSize) {
-		System.out.println(execRequest.getChannelValue("userid").toString());
 		return usermodel.resultMessage(usermodel.page(idx, pageSize));
 	}
 

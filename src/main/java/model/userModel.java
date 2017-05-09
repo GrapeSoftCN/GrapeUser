@@ -7,15 +7,17 @@ import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import esayhelper.DBHelper;
+import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.formHelper.formdef;
+import hookfilter.hook;
+import interrupt.interrupt;
 import rpc.execRequest;
 import esayhelper.jGrapeFW_Message;
 import security.codec;
@@ -25,17 +27,17 @@ public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
 	private JSONObject _obj = new JSONObject();
-//	private static String wbid;
+	// private static String wbid;
 	private static session session = new session();
 	static {
-//		String name = execRequest.getChannelValue("").toString();
-//		if (session.get(name) != null) {
-//			String info = session.get("username").toString();
-//			wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-//			users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
-//		}else{
-			users = (DBHelper) new DBHelper("mongodb", "userList");
-//		}
+		// String name = execRequest.getChannelValue("").toString();
+		// if (session.get(name) != null) {
+		// String info = session.get("username").toString();
+		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
+		// users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
+		// }else{
+		users = (DBHelper) new DBHelper("mongodb", "userList");
+		// }
 		_form = users.getChecker();
 	}
 
@@ -66,6 +68,15 @@ public class userModel {
 		if (findUserNameByEmail(email) != null) {
 			return 5; // email已存在
 		}
+		// 发送邮箱验证码,对邮箱进行验证
+//		String message = execRequest
+//				._run("GrapeEmail/Email/ActiveEmail/s:1" + "/s:" + email, null)
+//				.toString();
+//		long tip = (long) JSONHelper.string2json(message).get("errorcode");
+//		if (Integer.parseInt(String.valueOf(tip)) == 0) {
+//			//邮箱发送成功，等待用户输入验证码,中断当前操作
+//			 interrupt._break("", "", "", null);
+//		}
 		String phoneno = _userInfo.get("mobphone").toString();
 		if (!checkMobileNumber(phoneno)) {
 			return 6; // 手机号格式错误
@@ -123,7 +134,8 @@ public class userModel {
 			break;
 		}
 		password = codec.md5(password);
-		JSONObject object = users.eq(_checkField, username).eq("password", password).find();
+		JSONObject object = users.eq(_checkField, username)
+				.eq("password", password).find();
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
 			JSONArray array = getWbID(wbid, object);
@@ -143,7 +155,9 @@ public class userModel {
 	private JSONArray getWbID(String wbid, JSONObject object) {
 		JSONArray webs = new JSONArray();
 		JSONObject object2;
-		String webinfo = execRequest._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null).toString();
+		String webinfo = execRequest
+				._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
+				.toString();
 		JSONArray array = (JSONArray) JSONValue.parse(webinfo);
 		for (int i = 0, len = array.size(); i < len; i++) {
 			JSONObject objects = new JSONObject();
@@ -177,7 +191,8 @@ public class userModel {
 		}
 		JSONObject object = new JSONObject();
 		object.put("password", codec.md5(newPW));
-		object = users.eq("id", id).eq("password", codec.md5(oldPW)).data(object).update();
+		object = users.eq("id", id).eq("password", codec.md5(oldPW))
+				.data(object).update();
 		return object != null ? 0 : 99;
 	}
 
@@ -200,12 +215,14 @@ public class userModel {
 		if (userInfo.containsKey("password")) {
 			userInfo.remove("password");
 		}
-		JSONObject object = users.eq("_id", new ObjectId(_id)).data(userInfo).update();
+		JSONObject object = users.eq("_id", new ObjectId(_id)).data(userInfo)
+				.update();
 		return object != null ? 0 : 99;
 	}
 
 	public int Update(String id, String ownid, JSONObject object) {
-		return users.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
+		return users.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object)
+				.update() != null ? 0 : 99;
 	}
 
 	public JSONArray select() {
@@ -236,7 +253,8 @@ public class userModel {
 	public JSONObject page(int idx, int pageSize) {
 		JSONArray array = users.page(idx, pageSize);
 		JSONObject object = new JSONObject();
-		object.put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
+		object.put("totalSize",
+				(int) Math.ceil((double) users.count() / pageSize));
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
@@ -250,7 +268,8 @@ public class userModel {
 		}
 		JSONArray array = users.page(idx, pageSize);
 		JSONObject object = new JSONObject();
-		object.put("totalSize", (int) Math.ceil((double) users.count() / pageSize));
+		object.put("totalSize",
+				(int) Math.ceil((double) users.count() / pageSize));
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
@@ -307,7 +326,8 @@ public class userModel {
 		String regex = "([a-z]|[A-Z]|[0-9]|[\\u4e00-\\u9fa5])+";
 		Pattern p = Pattern.compile(regex);
 		Matcher m = p.matcher(userName);
-		return (userName.length() >= 7 && userName.length() <= 15) && m.matches();
+		return (userName.length() >= 7 && userName.length() <= 15)
+				&& m.matches();
 	}
 
 	/**
@@ -320,9 +340,11 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public JSONObject AddMap(HashMap<String, Object> map, JSONObject object) {
 		if (map.entrySet() != null) {
-			Iterator<Entry<String, Object>> iterator = map.entrySet().iterator();
+			Iterator<Entry<String, Object>> iterator = map.entrySet()
+					.iterator();
 			while (iterator.hasNext()) {
-				Map.Entry<String, Object> entry = (Map.Entry<String, Object>) iterator.next();
+				Map.Entry<String, Object> entry = (Map.Entry<String, Object>) iterator
+						.next();
 				if (!object.containsKey(entry.getKey())) {
 					object.put(entry.getKey(), entry.getValue());
 				}
@@ -335,50 +357,22 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
-	public int addUser(JSONObject _userInfo) {
-		// session session = new session();
-		// String info = session.get("username").toString();
-		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-		_form.removeRule("registerip", formdef.notNull);
-		_form.removeRule("password", formdef.notNull);
-		if (!_form.checkRuleEx(_userInfo)) {
-			return 1; // 必填字段没有填
-		}
-		String userName = _userInfo.get("id").toString();
-		if (!checkUserName(userName)) {
-			return 2;// 用户名不合法
-		}
-		if (findUserNameByID(userName) != null) {
-			return 3; // 用户名已存在
-		}
-		String email = _userInfo.get("email").toString();
-		if (!checkEmail(email)) {
-			return 4; // email格式不正确
-		}
-		if (findUserNameByEmail(email) != null) {
-			return 5; // email已存在
-		}
-		String phoneno = _userInfo.get("mobphone").toString();
-		if (!checkMobileNumber(phoneno)) {
-			return 6; // 手机号格式错误
-		}
-		if (findUserNameByMoblie(phoneno) != null) {
-			return 7; // 手机号已经被注册
-		}
-		// _userInfo.put("wbid", wbid);
-		return users.data(_userInfo).insertOnce() != null ? 0 : 99;
+	//中断当前操作，等待用户输入验证码
+	public void breakCurrent(String ckcode,String uniqueName){
+		
 	}
-
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONObject object) {
 		_obj.put("records", object);
 		return resultMessage(0, _obj.toString());
 	}
+
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONArray array) {
 		_obj.put("records", array);
 		return resultMessage(0, _obj.toString());
 	}
+
 	public String resultMessage(int num, String message) {
 		String msg = "";
 		switch (num) {
