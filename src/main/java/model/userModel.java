@@ -12,13 +12,11 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
+import apps.appsProxy;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.formHelper.formdef;
-import hookfilter.hook;
-import interrupt.interrupt;
-import rpc.execRequest;
 import esayhelper.jGrapeFW_Message;
 import security.codec;
 import session.session;
@@ -36,7 +34,10 @@ public class userModel {
 		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
 		// users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
 		// }else{
-		users = (DBHelper) new DBHelper("mongodb", "userList");
+		// users = (DBHelper) new DBHelper("mongodb", "userList");
+		// users = (DBHelper) new DBHelper(
+		// appsProxy.configValue().get("db").toString(), "userList");
+		users = new DBHelper("mongodb", "userList");
 		// }
 		_form = users.getChecker();
 	}
@@ -69,14 +70,14 @@ public class userModel {
 			return 5; // email已存在
 		}
 		// 发送邮箱验证码,对邮箱进行验证
-//		String message = execRequest
-//				._run("GrapeEmail/Email/ActiveEmail/s:1" + "/s:" + email, null)
-//				.toString();
-//		long tip = (long) JSONHelper.string2json(message).get("errorcode");
-//		if (Integer.parseInt(String.valueOf(tip)) == 0) {
-//			//邮箱发送成功，等待用户输入验证码,中断当前操作
-//			 interrupt._break("", "", "", null);
-//		}
+		// String message = execRequest
+		// ._run("GrapeEmail/Email/ActiveEmail/s:1" + "/s:" + email, null)
+		// .toString();
+		// long tip = (long) JSONHelper.string2json(message).get("errorcode");
+		// if (Integer.parseInt(String.valueOf(tip)) == 0) {
+		// //邮箱发送成功，等待用户输入验证码,中断当前操作
+		// interrupt._break("", "", "", null);
+		// }
 		String phoneno = _userInfo.get("mobphone").toString();
 		if (!checkMobileNumber(phoneno)) {
 			return 6; // 手机号格式错误
@@ -155,10 +156,14 @@ public class userModel {
 	private JSONArray getWbID(String wbid, JSONObject object) {
 		JSONArray webs = new JSONArray();
 		JSONObject object2;
-		String webinfo = execRequest
-				._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
-				.toString();
-		JSONArray array = (JSONArray) JSONValue.parse(webinfo);
+		// String webinfo = execRequest
+		// ._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
+		// .toString();
+		String webinfo = appsProxy.proxyCall("123.57.214.226:801",
+				"17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
+		String message = JSONHelper.string2json(webinfo).get("message").toString();
+		String records = JSONHelper.string2json(message).get("records").toString();
+		JSONArray array = (JSONArray) JSONValue.parse(records);
 		for (int i = 0, len = array.size(); i < len; i++) {
 			JSONObject objects = new JSONObject();
 			object2 = (JSONObject) array.get(i);
@@ -266,7 +271,7 @@ public class userModel {
 		for (Object object2 : userInfo.keySet()) {
 			users.eq(object2.toString(), userInfo.get(object2.toString()));
 		}
-		JSONArray array = users.page(idx, pageSize);
+		JSONArray array = users.dirty().page(idx, pageSize);
 		JSONObject object = new JSONObject();
 		object.put("totalSize",
 				(int) Math.ceil((double) users.count() / pageSize));
@@ -357,10 +362,11 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
-	//中断当前操作，等待用户输入验证码
-	public void breakCurrent(String ckcode,String uniqueName){
-		
+	// 中断当前操作，等待用户输入验证码
+	public void breakCurrent(String ckcode, String uniqueName) {
+
 	}
+
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONObject object) {
 		_obj.put("records", object);

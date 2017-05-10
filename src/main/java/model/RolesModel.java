@@ -9,6 +9,7 @@ import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import apps.appsProxy;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
@@ -25,7 +26,8 @@ public class RolesModel {
 		// session session = new session();
 		// String info = session.get("username").toString();
 		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-		role = new DBHelper("mongodb", "userGroup");
+//		role = new DBHelper("mongodb", "userGroup");
+		role = new DBHelper(appsProxy.configValue().get("db").toString(), "userGroup");
 		_form = role.getChecker();
 	}
 
@@ -129,7 +131,7 @@ public class RolesModel {
 		for (Object object2 : object.keySet()) {
 			role.eq(object2.toString(), object.get(object2.toString()));
 		}
-		JSONArray array = role.page(idx, pageSize);
+		JSONArray array = role.dirty().page(idx, pageSize);
 		JSONObject objects = new JSONObject();
 		objects.put("totalSize",
 				(int) Math.ceil((double) role.count() / pageSize));

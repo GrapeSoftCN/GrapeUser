@@ -8,15 +8,14 @@ import org.json.simple.JSONValue;
 
 import esayhelper.JSONHelper;
 import model.RolesModel;
-import rpc.execRequest;
 
 public class roles {
 	private RolesModel rolesModel = new RolesModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
-	private String userId;
+//	private String userId;
 
 	public roles() {
-		userId = execRequest.getChannelValue("Userid").toString();
+//		userId = execRequest.getChannelValue("Userid").toString();
 
 		defcol.put("ownid", 0);
 		defcol.put("sort", 0);
@@ -26,11 +25,11 @@ public class roles {
 
 	public String RoleInsert(String roleInfo) {
 		// 该用户是否拥有新增权限
-		String tip = execRequest
-				._run("GrapeAuth/Auth/InsertPLV/s:" + userId, null).toString();
-		if (!"0".equals(tip)) {
-			return rolesModel.resultMessage(4, "没有新增权限");
-		}
+//		String tip = execRequest
+//				._run("GrapeAuth/Auth/InsertPLV/s:" + userId, null).toString();
+//		if (!"0".equals(tip)) {
+//			return rolesModel.resultMessage(4, "没有新增权限");
+//		}
 		JSONObject object = rolesModel.addMap(defcol,
 				JSONHelper.string2json(roleInfo));
 		return rolesModel.resultMessage(rolesModel.insert(object), "新增角色成功");

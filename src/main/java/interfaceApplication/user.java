@@ -6,7 +6,6 @@ import org.json.simple.JSONObject;
 
 import esayhelper.JSONHelper;
 import model.userModel;
-import rpc.execRequest;
 
 @SuppressWarnings("unchecked")
 public class user {
@@ -52,11 +51,11 @@ public class user {
 	public String UserLogin(String userInfo) {
 		String mString = "";
 		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
-		if (!usersinfo.contains("errorcode")) {
+		if (usersinfo!=null) {
 			_obj.put("records", JSONHelper.string2json(usersinfo));
-			mString = usermodel.resultMessage(usersinfo != null ? 0 : 9, _obj.toString());
+			mString = usermodel.resultMessage(0, _obj.toString());
 		}else{
-			mString = usersinfo;
+			mString = usermodel.resultMessage(9, "");
 		}
 		return mString;
 	}
