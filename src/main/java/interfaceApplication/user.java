@@ -32,11 +32,12 @@ public class user {
 	 * 注册用户
 	 * 
 	 * @param userInfo（必填字段
-	 *          id,password,name,registerip,wbid,email,mobphone）
+	 *            id,password,name,registerip,wbid,email,mobphone）
 	 * @return
 	 */
 	public String UserRegister(String userInfo) {
-		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(userInfo));
+		JSONObject object = usermodel.AddMap(defcol,
+				JSONHelper.string2json(userInfo));
 		return usermodel.resultMessage(usermodel.register(object), "用户注册成功");
 	}
 
@@ -44,17 +45,18 @@ public class user {
 	 * 用户登录
 	 * 
 	 * @param userInfo
-	 *          登录信息 ( 登录名(id,email,mobphone),password 登录密码,loginmode
-	 *          登录模式（0:用户名；1:email；2:手机号）)
+	 *            登录信息 ( 登录名(id,email,mobphone),password 登录密码,loginmode
+	 *            登录模式（0:用户名；1:email；2:手机号）)
 	 * @return 除密码之外的数据
 	 */
 	public String UserLogin(String userInfo) {
 		String mString = "";
-		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
-		if (usersinfo!=null) {
+		String usersinfo = usermodel
+				.checkLogin(JSONHelper.string2json(userInfo));
+		if (usersinfo != null) {
 			_obj.put("records", JSONHelper.string2json(usersinfo));
 			mString = usermodel.resultMessage(0, _obj.toString());
-		}else{
+		} else {
 			mString = usermodel.resultMessage(9, "");
 		}
 		return mString;
@@ -73,11 +75,13 @@ public class user {
 	}
 
 	public String UserChangePW(String UserName, String oldPW, String newPW) {
-		return usermodel.resultMessage(usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
+		return usermodel.resultMessage(
+				usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
 	}
 
 	public String UserEdit(String _id, String userInfo) {
-		return usermodel.resultMessage(usermodel.edit(_id, JSONHelper.string2json(userInfo)),
+		return usermodel.resultMessage(
+				usermodel.edit(_id, JSONHelper.string2json(userInfo)),
 				"用户信息修改成功");
 	}
 
@@ -86,8 +90,10 @@ public class user {
 	}
 
 	public String UserSearch(String userinfo) {
-		return usermodel.resultMessage(usermodel.select(JSONHelper.string2json(userinfo)));
+		return usermodel.resultMessage(
+				usermodel.select(JSONHelper.string2json(userinfo)));
 	}
+
 	public String UserFind(String id) {
 		return usermodel.resultMessage(usermodel.select(id));
 	}
@@ -106,10 +112,13 @@ public class user {
 	}
 
 	public String UserBatchDelect(String ids) {
-		return usermodel.resultMessage(usermodel.delect(ids.split(",")), "批量操作成功");
+		return usermodel.resultMessage(usermodel.delect(ids.split(",")),
+				"批量操作成功");
 	}
+
 	public String AddLeader(String info) {
-		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(info));
+		JSONObject object = usermodel.AddMap(defcol,
+				JSONHelper.string2json(info));
 		return usermodel.resultMessage(usermodel.register(object), "新增用户成功");
 	}
 }

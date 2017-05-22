@@ -10,6 +10,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import apps.appsProxy;
+import database.db;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
@@ -26,11 +27,14 @@ public class RolesModel {
 		// session session = new session();
 		// String info = session.get("username").toString();
 		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-//		role = new DBHelper("mongodb", "userGroup");
-		role = new DBHelper(appsProxy.configValue().get("db").toString(), "userGroup");
+		// role = new DBHelper("mongodb", "userGroup");
+		role = new DBHelper(appsProxy.configValue().get("db").toString(),
+				"userGroup");
 		_form = role.getChecker();
 	}
-
+	private db bind(){
+		return role.bind(String.valueOf(appsProxy.appid()));
+	}
 	public RolesModel() {
 		_form.putRule("name", formHelper.formdef.notNull);
 	}
@@ -51,7 +55,7 @@ public class RolesModel {
 				.toString();
 		long code = (long) JSONHelper.string2json(tip).get("errorcode");
 		if (code == 0) {
-			Object object2 = role.data(object).insertOnce();
+			Object object2 = bind().data(object).insertOnce();
 			if (object2 != null) {
 				return 0;
 			}
@@ -63,19 +67,10 @@ public class RolesModel {
 	}
 
 	public int update(String id, JSONObject object) {
-		return role.eq("_id", new ObjectId(id)).data(object).update() != null
+		return bind().eq("_id", new ObjectId(id)).data(object).update() != null
 				? 0 : 99;
 	}
 
-	// 是否分表
-	// public DBHelper bindfield(JSONObject object) {
-	// if (object.containsKey("wbid")) {
-	// if (!"0".equals(object.get("ownid").toString())) {
-	// role = (DBHelper) role.bind(object.get("ownid").toString());
-	// }
-	// }
-	// return role;
-	// }
 	/**
 	 * 批量修改 设置排序值，调整层级关系
 	 * 
@@ -89,7 +84,7 @@ public class RolesModel {
 		if (object.containsKey("fatherid") && object.containsKey("sort")) {
 			_obj.put("fatherid", object.get("fatherid"));
 			_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
-			code = role.eq("_id", object.get("_id").toString()).data(_obj)
+			code = bind().eq("_id", object.get("_id").toString()).data(_obj)
 					.update() != null ? 0 : 99;
 		} else {
 			if (object.containsKey("fatherid")) {
@@ -105,21 +100,21 @@ public class RolesModel {
 
 	public JSONArray select(JSONObject object) {
 		for (Object object2 : object.keySet()) {
-			role.eq(object2.toString(), object.get(object2.toString()));
+			bind().eq(object2.toString(), object.get(object2.toString()));
 		}
-		return role.limit(20).select();
+		return bind().limit(20).select();
 	}
 
 	public JSONObject select(String name) {
-		return role.eq("name", name).find();
+		return bind().eq("name", name).find();
 	}
 
 	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize) {
-		JSONArray array = role.page(idx, pageSize);
+		JSONArray array = bind().page(idx, pageSize);
 		JSONObject object = new JSONObject();
 		object.put("totalSize",
-				(int) Math.ceil((double) role.count() / pageSize));
+				(int) Math.ceil((double) bind().count() / pageSize));
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
@@ -129,12 +124,12 @@ public class RolesModel {
 	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize, JSONObject object) {
 		for (Object object2 : object.keySet()) {
-			role.eq(object2.toString(), object.get(object2.toString()));
+			bind().eq(object2.toString(), object.get(object2.toString()));
 		}
-		JSONArray array = role.dirty().page(idx, pageSize);
+		JSONArray array = bind().dirty().page(idx, pageSize);
 		JSONObject objects = new JSONObject();
 		objects.put("totalSize",
-				(int) Math.ceil((double) role.count() / pageSize));
+				(int) Math.ceil((double) bind().count() / pageSize));
 		objects.put("currentPage", idx);
 		objects.put("pageSize", pageSize);
 		objects.put("data", array);
@@ -142,22 +137,22 @@ public class RolesModel {
 	}
 
 	public int delete(String id) {
-		return role.eq("_id", new ObjectId(id)).delete() != null ? 0 : 99;
+		return bind().eq("_id", new ObjectId(id)).delete() != null ? 0 : 99;
 	}
 
 	public int delete(String[] arr) {
-		role.or();
+		bind().or();
 		for (String string : arr) {
-			role.eq("_id", string);
+			bind().eq("_id", string);
 		}
-		return role.deleteAll() != arr.length ? 0 : 99;
+		return bind().deleteAll() != arr.length ? 0 : 99;
 	}
 
 	@SuppressWarnings("unchecked")
 	public int setsort(String id, int num) {
 		JSONObject _obj = new JSONObject();
 		_obj.put("sort", num);
-		return role.eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
+		return bind().eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
 				: 99;
 	}
 
@@ -165,7 +160,7 @@ public class RolesModel {
 	public int setFatherId(String id, String fatherid) {
 		JSONObject _obj = new JSONObject();
 		_obj.put("fatherid", fatherid);
-		return role.eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
+		return bind().eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
 				: 99;
 	}
 
@@ -173,13 +168,13 @@ public class RolesModel {
 	public int setPlv(String id, String plv) {
 		JSONObject _obj = new JSONObject();
 		_obj.put("plv", plv);
-		return role.eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
+		return bind().eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
 				: 99;
 	}
 
 	// 获取角色plv
 	public JSONObject getRole(String ugid) {
-		return role.eq("_id", new ObjectId(ugid)).find();
+		return bind().eq("_id", new ObjectId(ugid)).find();
 	}
 
 	@SuppressWarnings("unchecked")

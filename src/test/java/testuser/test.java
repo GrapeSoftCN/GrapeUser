@@ -2,6 +2,7 @@ package testuser;
 
 import httpServer.booter;
 import interfaceApplication.user;
+import interfaceApplication.wechatUser;
 
 public class test {
 	public static void main(String[] args) {
@@ -14,10 +15,12 @@ public class test {
 		try {
 			System.out.println("GrapeUser!");
 			System.setProperty("AppName", "GrapeUser");
-			booter.start(1003);
+			booter.start(1008);
 		} catch (Exception e) {
 			// TODO: handle exception
 		}
 //		System.out.println(new user().UserPage(1, 2));
+//		System.out.println(new wechatUser().FindOpenId("oZU2Lw7s_7bATZXXJL5L2CvmFrCY"));
+//		System.out.println(new wechatUser().FindOpenId("oZU2Lw7s_7bATZXXJL5L2CvmFrCY"));
 	}
 }

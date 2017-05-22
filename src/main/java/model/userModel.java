@@ -13,6 +13,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import apps.appsProxy;
+import database.db;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
@@ -35,13 +36,16 @@ public class userModel {
 		// users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
 		// }else{
 		// users = (DBHelper) new DBHelper("mongodb", "userList");
-		// users = (DBHelper) new DBHelper(
-		// appsProxy.configValue().get("db").toString(), "userList");
-		users = new DBHelper("mongodb", "userList");
+		users = (DBHelper) new DBHelper(
+				appsProxy.configValue().get("db").toString(), "userList");
+		// users = new DBHelper("mongodb", "userList");
 		// }
 		_form = users.getChecker();
 	}
 
+	private db bind(){
+		return users.bind(String.valueOf(appsProxy.appid()));
+	}
 	public userModel() {
 		_form.putRule("id", formdef.notNull);
 		_form.putRule("password", formdef.notNull);
@@ -88,7 +92,7 @@ public class userModel {
 		// md5加密密码
 		String secpassword = secPassword(_userInfo.get("password").toString());
 		_userInfo.replace("password", secpassword);
-		return users.data(_userInfo).insertOnce() != null ? 0 : 99;
+		return bind().data(_userInfo).insertOnce() != null ? 0 : 99;
 	}
 
 	public String checkLogin(JSONObject userinfo) {
@@ -135,7 +139,7 @@ public class userModel {
 			break;
 		}
 		password = codec.md5(password);
-		JSONObject object = users.eq(_checkField, username)
+		JSONObject object = bind().eq(_checkField, username)
 				.eq("password", password).find();
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
@@ -159,10 +163,17 @@ public class userModel {
 		// String webinfo = execRequest
 		// ._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
 		// .toString();
-		String webinfo = appsProxy.proxyCall("123.57.214.226:801",
-				"17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
-		String message = JSONHelper.string2json(webinfo).get("message").toString();
-		String records = JSONHelper.string2json(message).get("records").toString();
+		String webinfo = appsProxy
+				.proxyCall("123.57.214.226:801",
+						appsProxy.appid()+"/17/WebInfo/WebFindById/s:" + wbid, null, "")
+				.toString();
+		if (("").equals(webinfo)) {
+			return webs;
+		}
+		String message = JSONHelper.string2json(webinfo).get("message")
+				.toString();
+		String records = JSONHelper.string2json(message).get("records")
+				.toString();
 		JSONArray array = (JSONArray) JSONValue.parse(records);
 		for (int i = 0, len = array.size(); i < len; i++) {
 			JSONObject objects = new JSONObject();
@@ -182,7 +193,7 @@ public class userModel {
 
 	public long getpoint_username(String username) {
 		long rl = 0;
-		JSONObject rs = users.eq("id", username).field("point").find();
+		JSONObject rs = bind().eq("id", username).field("point").find();
 		if (rs != null) {
 			rl = Long.parseLong(rs.get("point").toString());
 		}
@@ -196,7 +207,7 @@ public class userModel {
 		}
 		JSONObject object = new JSONObject();
 		object.put("password", codec.md5(newPW));
-		object = users.eq("id", id).eq("password", codec.md5(oldPW))
+		object = bind().eq("id", id).eq("password", codec.md5(oldPW))
 				.data(object).update();
 		return object != null ? 0 : 99;
 	}
@@ -220,28 +231,28 @@ public class userModel {
 		if (userInfo.containsKey("password")) {
 			userInfo.remove("password");
 		}
-		JSONObject object = users.eq("_id", new ObjectId(_id)).data(userInfo)
+		JSONObject object = bind().eq("_id", new ObjectId(_id)).data(userInfo)
 				.update();
 		return object != null ? 0 : 99;
 	}
 
 	public int Update(String id, String ownid, JSONObject object) {
-		return users.eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object)
+		return bind().eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object)
 				.update() != null ? 0 : 99;
 	}
 
 	public JSONArray select() {
-		return users.limit(20).select();
+		return bind().limit(20).select();
 	}
 
 	public JSONArray select(JSONObject userInfo) {
 		for (Object object2 : userInfo.keySet()) {
 			if (object2.equals("_id")) {
-				users.eq("_id", new ObjectId(userInfo.get(object2).toString()));
+				bind().eq("_id", new ObjectId(userInfo.get(object2).toString()));
 			}
-			users.eq(object2.toString(), userInfo.get(object2.toString()));
+			bind().eq(object2.toString(), userInfo.get(object2.toString()));
 		}
-		return users.limit(20).select();
+		return bind().limit(20).select();
 	}
 
 	/**
@@ -251,15 +262,15 @@ public class userModel {
 	 * @return
 	 */
 	public JSONObject select(String id) {
-		return users.eq("id", id).find();
+		return bind().eq("id", id).find();
 	}
 
 	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize) {
-		JSONArray array = users.page(idx, pageSize);
+		JSONArray array = bind().page(idx, pageSize);
 		JSONObject object = new JSONObject();
 		object.put("totalSize",
-				(int) Math.ceil((double) users.count() / pageSize));
+				(int) Math.ceil((double) bind().count() / pageSize));
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
@@ -269,12 +280,12 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public JSONObject page(int idx, int pageSize, JSONObject userInfo) {
 		for (Object object2 : userInfo.keySet()) {
-			users.eq(object2.toString(), userInfo.get(object2.toString()));
+			bind().eq(object2.toString(), userInfo.get(object2.toString()));
 		}
-		JSONArray array = users.dirty().page(idx, pageSize);
+		JSONArray array = bind().dirty().page(idx, pageSize);
 		JSONObject object = new JSONObject();
 		object.put("totalSize",
-				(int) Math.ceil((double) users.count() / pageSize));
+				(int) Math.ceil((double) bind().count() / pageSize));
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
@@ -282,33 +293,33 @@ public class userModel {
 	}
 
 	public int delect(String id) {
-		JSONObject object = users.eq("_id", new ObjectId(id)).delete();
+		JSONObject object = bind().eq("_id", new ObjectId(id)).delete();
 		return object != null ? 0 : 99;
 	}
 
 	public int delect(String[] arr) {
-		users.or();
+		bind().or();
 		for (int i = 0; i < arr.length; i++) {
-			users.eq("_id", new ObjectId(arr[i]));
+			bind().eq("_id", new ObjectId(arr[i]));
 		}
-		return users.deleteAll() == arr.length ? 0 : 99;
+		return bind().deleteAll() == arr.length ? 0 : 99;
 	}
 
 	public JSONObject findUserNameByID(String userName) {
-		return users.eq("id", userName).find();
+		return bind().eq("id", userName).find();
 	}
 
 	public JSONObject findUserNameByEmail(String email) {
-		return users.eq("email", email).find();
+		return bind().eq("email", email).find();
 	}
 
 	public JSONObject findUserNameByMoblie(String phoneno) {
-		return users.eq("mobphone", phoneno).find();
+		return bind().eq("mobphone", phoneno).find();
 	}
 
 	public boolean checkUser(String id, String pw) {
 		pw = secPassword(pw.toString());
-		return users.eq("id", id).eq("password", pw).find() == null;
+		return bind().eq("id", id).eq("password", pw).find() == null;
 	}
 
 	@SuppressWarnings("unchecked")
