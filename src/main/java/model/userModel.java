@@ -1,9 +1,11 @@
 package model;
 
+import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -164,7 +166,7 @@ public class userModel {
 		// ._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
 		// .toString();
 		String webinfo = appsProxy
-				.proxyCall("123.57.214.226:801",
+				.proxyCall(getAppIp("host").split("/")[0],
 						appsProxy.appid()+"/17/WebInfo/WebFindById/s:" + wbid, null, "")
 				.toString();
 		if (("").equals(webinfo)) {
@@ -378,6 +380,18 @@ public class userModel {
 
 	}
 
+	//
+	private String getAppIp(String key) {
+		String value = "";
+		try {
+			Properties pro = new Properties();
+			pro.load(new FileInputStream("URLConfig.properties"));
+			value = pro.getProperty(key);
+		} catch (Exception e) {
+			value = "";
+		}
+		return value;
+	}
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONObject object) {
 		_obj.put("records", object);
