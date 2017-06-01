@@ -20,6 +20,7 @@ import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.formHelper.formdef;
+import nlogger.nlogger;
 import esayhelper.jGrapeFW_Message;
 import security.codec;
 import session.session;
@@ -38,16 +39,16 @@ public class userModel {
 		// users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
 		// }else{
 		// users = (DBHelper) new DBHelper("mongodb", "userList");
-		users = (DBHelper) new DBHelper(
-				appsProxy.configValue().get("db").toString(), "userList");
+		users = (DBHelper) new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
 		// users = new DBHelper("mongodb", "userList");
 		// }
 		_form = users.getChecker();
 	}
 
-	private db bind(){
+	private db bind() {
 		return users.bind(String.valueOf(appsProxy.appid()));
 	}
+
 	public userModel() {
 		_form.putRule("id", formdef.notNull);
 		_form.putRule("password", formdef.notNull);
@@ -58,43 +59,59 @@ public class userModel {
 
 	@SuppressWarnings("unchecked")
 	public int register(JSONObject _userInfo) {
-		if (!_form.checkRuleEx(_userInfo)) {
-			return 1; // 必填字段没有填
+		int code = 99;
+		if (_userInfo != null) {
+			try {
+				if (!_form.checkRuleEx(_userInfo)) {
+					return 1; // 必填字段没有填
+				}
+				String userName = _userInfo.get("id").toString();
+				if (!checkUserName(userName)) {
+					return 2;// 用户名不合法
+				}
+				if (findUserNameByID(userName) != null) {
+					return 3; // 用户名已存在
+				}
+				if (_userInfo.containsKey("email")) {
+					String email = _userInfo.get("email").toString();
+					if (!checkEmail(email)) {
+						return 4; // email格式不正确
+					}
+					if (findUserNameByEmail(email) != null) {
+						return 5; // email已存在
+					}
+				}
+				// 发送邮箱验证码,对邮箱进行验证
+				// String message = execRequest
+				// ._run("GrapeEmail/Email/ActiveEmail/s:1" + "/s:" + email,
+				// null)
+				// .toString();
+				// long tip = (long)
+				// JSONHelper.string2json(message).get("errorcode");
+				// if (Integer.parseInt(String.valueOf(tip)) == 0) {
+				// //邮箱发送成功，等待用户输入验证码,中断当前操作
+				// interrupt._break("", "", "", null);
+				// }
+				if (_userInfo.containsKey("mobphone")) {
+					String phoneno = _userInfo.get("mobphone").toString();
+					if (!checkMobileNumber(phoneno)) {
+						return 6; // 手机号格式错误
+					}
+					if (findUserNameByMoblie(phoneno) != null) {
+						return 7; // 手机号已经被注册
+					}
+				}
+				// md5加密密码
+				String secpassword = secPassword(_userInfo.get("password").toString());
+				_userInfo.replace("password", secpassword);
+				Object object = bind().data(_userInfo).insertOnce();
+				code = (object != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
 		}
-		String userName = _userInfo.get("id").toString();
-		if (!checkUserName(userName)) {
-			return 2;// 用户名不合法
-		}
-		if (findUserNameByID(userName) != null) {
-			return 3; // 用户名已存在
-		}
-		String email = _userInfo.get("email").toString();
-		if (!checkEmail(email)) {
-			return 4; // email格式不正确
-		}
-		if (findUserNameByEmail(email) != null) {
-			return 5; // email已存在
-		}
-		// 发送邮箱验证码,对邮箱进行验证
-		// String message = execRequest
-		// ._run("GrapeEmail/Email/ActiveEmail/s:1" + "/s:" + email, null)
-		// .toString();
-		// long tip = (long) JSONHelper.string2json(message).get("errorcode");
-		// if (Integer.parseInt(String.valueOf(tip)) == 0) {
-		// //邮箱发送成功，等待用户输入验证码,中断当前操作
-		// interrupt._break("", "", "", null);
-		// }
-		String phoneno = _userInfo.get("mobphone").toString();
-		if (!checkMobileNumber(phoneno)) {
-			return 6; // 手机号格式错误
-		}
-		if (findUserNameByMoblie(phoneno) != null) {
-			return 7; // 手机号已经被注册
-		}
-		// md5加密密码
-		String secpassword = secPassword(_userInfo.get("password").toString());
-		_userInfo.replace("password", secpassword);
-		return bind().data(_userInfo).insertOnce() != null ? 0 : 99;
+		return code;
 	}
 
 	public String checkLogin(JSONObject userinfo) {
@@ -141,8 +158,7 @@ public class userModel {
 			break;
 		}
 		password = codec.md5(password);
-		JSONObject object = bind().eq(_checkField, username)
-				.eq("password", password).find();
+		JSONObject object = bind().eq(_checkField, username).eq("password", password).find();
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
 			JSONArray array = getWbID(wbid, object);
@@ -165,25 +181,27 @@ public class userModel {
 		// String webinfo = execRequest
 		// ._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
 		// .toString();
-		String webinfo = appsProxy
-				.proxyCall(getAppIp("host").split("/")[0],
-						appsProxy.appid()+"/17/WebInfo/WebFindById/s:" + wbid, null, "")
-				.toString();
-		if (("").equals(webinfo)) {
-			return webs;
-		}
-		String message = JSONHelper.string2json(webinfo).get("message")
-				.toString();
-		String records = JSONHelper.string2json(message).get("records")
-				.toString();
-		JSONArray array = (JSONArray) JSONValue.parse(records);
-		for (int i = 0, len = array.size(); i < len; i++) {
-			JSONObject objects = new JSONObject();
-			object2 = (JSONObject) array.get(i);
-			JSONObject objid = (JSONObject) object2.get("_id");
-			objects.put("wbid", objid.get("$oid").toString());
-			objects.put("wbname", object2.get("title").toString());
-			webs.add(objects);
+		String webinfo = appsProxy.proxyCall(getAppIp("host").split("/")[0],
+				appsProxy.appid() + "/17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
+//		if (("").equals(webinfo)) {
+//			return webs;
+//		}
+		if (JSONHelper.string2json(webinfo) != null) {
+			String message = JSONHelper.string2json(webinfo).get("message").toString();
+			if (JSONHelper.string2json(message) != null) {
+				String records = JSONHelper.string2json(message).get("records").toString();
+				JSONArray array = (JSONArray) JSONValue.parse(records);
+				if (array.size()!=0) {
+					for (int i = 0, len = array.size(); i < len; i++) {
+						JSONObject objects = new JSONObject();
+						object2 = (JSONObject) array.get(i);
+						JSONObject objid = (JSONObject) object2.get("_id");
+						objects.put("wbid", objid.get("$oid").toString());
+						objects.put("wbname", object2.get("title").toString());
+						webs.add(objects);
+					}
+				}
+			}
 		}
 		return webs;
 	}
@@ -209,52 +227,76 @@ public class userModel {
 		}
 		JSONObject object = new JSONObject();
 		object.put("password", codec.md5(newPW));
-		object = bind().eq("id", id).eq("password", codec.md5(oldPW))
-				.data(object).update();
+		object = bind().eq("id", id).eq("password", codec.md5(oldPW)).data(object).update();
 		return object != null ? 0 : 99;
 	}
 
 	public int edit(String _id, JSONObject userInfo) {
-		if (userInfo.containsKey("id")) {
-			if (!checkUserName(userInfo.get("id").toString())) {
-				return 2;
+		int code = 99;
+		if (userInfo != null) {
+			try {
+				if (userInfo.containsKey("id")) {
+					if (!checkUserName(userInfo.get("id").toString())) {
+						return 2;
+					}
+				}
+				if (userInfo.containsKey("email")) {
+					if (!checkEmail(userInfo.get("email").toString())) {
+						return 4;
+					}
+				}
+				if (userInfo.containsKey("mobphone")) {
+					if (!checkMobileNumber(userInfo.get("mobphone").toString())) {
+						return 6;
+					}
+				}
+				if (userInfo.containsKey("password")) {
+					userInfo.remove("password");
+				}
+				JSONObject object = bind().eq("_id", new ObjectId(_id)).data(userInfo).update();
+				code = (object != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
 			}
 		}
-		if (userInfo.containsKey("email")) {
-			if (!checkEmail(userInfo.get("email").toString())) {
-				return 4;
-			}
-		}
-		if (userInfo.containsKey("mobphone")) {
-			if (!checkMobileNumber(userInfo.get("mobphone").toString())) {
-				return 6;
-			}
-		}
-		if (userInfo.containsKey("password")) {
-			userInfo.remove("password");
-		}
-		JSONObject object = bind().eq("_id", new ObjectId(_id)).data(userInfo)
-				.update();
-		return object != null ? 0 : 99;
+		return code;
 	}
 
 	public int Update(String id, String ownid, JSONObject object) {
-		return bind().eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object)
-				.update() != null ? 0 : 99;
+		return bind().eq("_id", new ObjectId(id)).eq("ownid", ownid).data(object).update() != null ? 0 : 99;
 	}
 
-	public JSONArray select() {
-		return bind().limit(20).select();
-	}
-
-	public JSONArray select(JSONObject userInfo) {
-		for (Object object2 : userInfo.keySet()) {
-			if (object2.equals("_id")) {
-				bind().eq("_id", new ObjectId(userInfo.get(object2).toString()));
-			}
-			bind().eq(object2.toString(), userInfo.get(object2.toString()));
+	public String select() {
+		JSONArray array = null;
+		try {
+			array = new JSONArray();
+			array = bind().limit(20).select();
+		} catch (Exception e) {
+			nlogger.logout(e);
+			array = null;
 		}
-		return bind().limit(20).select();
+		return resultMessage(array);
+	}
+
+	public String select(JSONObject userInfo) {
+		JSONArray array = null;
+		if (userInfo != null) {
+			try {
+				array = new JSONArray();
+				for (Object object2 : userInfo.keySet()) {
+					if (object2.equals("_id")) {
+						bind().eq("_id", new ObjectId(userInfo.get(object2).toString()));
+					}
+					bind().eq(object2.toString(), userInfo.get(object2.toString()));
+				}
+				array = bind().limit(20).select();
+			} catch (Exception e) {
+				nlogger.logout(e);
+				array = null;
+			}
+		}
+		return resultMessage(array);
 	}
 
 	/**
@@ -264,47 +306,81 @@ public class userModel {
 	 * @return
 	 */
 	public JSONObject select(String id) {
-		return bind().eq("id", id).find();
+		JSONObject object = bind().eq("id", id).find();
+		return object != null ? object : null;
 	}
 
 	@SuppressWarnings("unchecked")
-	public JSONObject page(int idx, int pageSize) {
-		JSONArray array = bind().page(idx, pageSize);
-		JSONObject object = new JSONObject();
-		object.put("totalSize",
-				(int) Math.ceil((double) bind().count() / pageSize));
-		object.put("currentPage", idx);
-		object.put("pageSize", pageSize);
-		object.put("data", array);
-		return object;
-	}
-
-	@SuppressWarnings("unchecked")
-	public JSONObject page(int idx, int pageSize, JSONObject userInfo) {
-		for (Object object2 : userInfo.keySet()) {
-			bind().eq(object2.toString(), userInfo.get(object2.toString()));
+	public String page(int idx, int pageSize) {
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			JSONArray array = bind().page(idx, pageSize);
+			object = new JSONObject();
+			object.put("totalSize", (int) Math.ceil((double) bind().count() / pageSize));
+			object.put("currentPage", idx);
+			object.put("pageSize", pageSize);
+			object.put("data", array);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object = null;
 		}
-		JSONArray array = bind().dirty().page(idx, pageSize);
-		JSONObject object = new JSONObject();
-		object.put("totalSize",
-				(int) Math.ceil((double) bind().count() / pageSize));
-		object.put("currentPage", idx);
-		object.put("pageSize", pageSize);
-		object.put("data", array);
-		return object;
+		return resultMessage(object);
+	}
+
+	@SuppressWarnings("unchecked")
+	public String page(int idx, int pageSize, JSONObject userInfo) {
+		JSONObject object = null;
+		if (userInfo != null) {
+			try {
+				object = new JSONObject();
+				for (Object object2 : userInfo.keySet()) {
+					if ("_id".equals(object2.toString())) {
+						bind().eq("_id", new ObjectId(userInfo.get("_id").toString()));
+					}
+					bind().eq(object2.toString(), userInfo.get(object2.toString()));
+				}
+				JSONArray array = bind().dirty().page(idx, pageSize);
+				object.put("totalSize", (int) Math.ceil((double) bind().count() / pageSize));
+				object.put("currentPage", idx);
+				object.put("pageSize", pageSize);
+				object.put("data", array);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				object = null;
+			}
+		}
+		return resultMessage(object);
 	}
 
 	public int delect(String id) {
-		JSONObject object = bind().eq("_id", new ObjectId(id)).delete();
-		return object != null ? 0 : 99;
+		int code = 99;
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			object = bind().eq("_id", new ObjectId(id)).delete();
+			code = (object != null ? 0 : 99);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
+		}
+		return code;
 	}
 
 	public int delect(String[] arr) {
-		bind().or();
-		for (int i = 0; i < arr.length; i++) {
-			bind().eq("_id", new ObjectId(arr[i]));
+		int code = 99;
+		try {
+			bind().or();
+			for (int i = 0; i < arr.length; i++) {
+				bind().eq("_id", new ObjectId(arr[i]));
+			}
+			long codes = bind().deleteAll();
+			code = (Integer.parseInt(String.valueOf(codes)) == arr.length ? 0 : 99);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
 		}
-		return bind().deleteAll() == arr.length ? 0 : 99;
+		return code;
 	}
 
 	public JSONObject findUserNameByID(String userName) {
@@ -344,8 +420,7 @@ public class userModel {
 		String regex = "([a-z]|[A-Z]|[0-9]|[\\u4e00-\\u9fa5])+";
 		Pattern p = Pattern.compile(regex);
 		Matcher m = p.matcher(userName);
-		return (userName.length() >= 7 && userName.length() <= 15)
-				&& m.matches();
+		return (userName.length() >= 7 && userName.length() <= 15) && m.matches();
 	}
 
 	/**
@@ -358,11 +433,9 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public JSONObject AddMap(HashMap<String, Object> map, JSONObject object) {
 		if (map.entrySet() != null) {
-			Iterator<Entry<String, Object>> iterator = map.entrySet()
-					.iterator();
+			Iterator<Entry<String, Object>> iterator = map.entrySet().iterator();
 			while (iterator.hasNext()) {
-				Map.Entry<String, Object> entry = (Map.Entry<String, Object>) iterator
-						.next();
+				Map.Entry<String, Object> entry = (Map.Entry<String, Object>) iterator.next();
 				if (!object.containsKey(entry.getKey())) {
 					object.put(entry.getKey(), entry.getValue());
 				}
@@ -392,14 +465,21 @@ public class userModel {
 		}
 		return value;
 	}
+
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONObject object) {
+		if (object == null) {
+			object = new JSONObject();
+		}
 		_obj.put("records", object);
 		return resultMessage(0, _obj.toString());
 	}
 
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONArray array) {
+		if (array == null) {
+			array = new JSONArray();
+		}
 		_obj.put("records", array);
 		return resultMessage(0, _obj.toString());
 	}

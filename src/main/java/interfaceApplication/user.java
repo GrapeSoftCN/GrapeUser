@@ -36,8 +36,7 @@ public class user {
 	 * @return
 	 */
 	public String UserRegister(String userInfo) {
-		JSONObject object = usermodel.AddMap(defcol,
-				JSONHelper.string2json(userInfo));
+		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(userInfo));
 		return usermodel.resultMessage(usermodel.register(object), "用户注册成功");
 	}
 
@@ -51,8 +50,7 @@ public class user {
 	 */
 	public String UserLogin(String userInfo) {
 		String mString = "";
-		String usersinfo = usermodel
-				.checkLogin(JSONHelper.string2json(userInfo));
+		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
 		if (usersinfo != null) {
 			_obj.put("records", JSONHelper.string2json(usersinfo));
 			mString = usermodel.resultMessage(0, _obj.toString());
@@ -75,23 +73,19 @@ public class user {
 	}
 
 	public String UserChangePW(String UserName, String oldPW, String newPW) {
-		return usermodel.resultMessage(
-				usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
+		return usermodel.resultMessage(usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
 	}
 
 	public String UserEdit(String _id, String userInfo) {
-		return usermodel.resultMessage(
-				usermodel.edit(_id, JSONHelper.string2json(userInfo)),
-				"用户信息修改成功");
+		return usermodel.resultMessage(usermodel.edit(_id, JSONHelper.string2json(userInfo)), "用户信息修改成功");
 	}
 
 	public String UserSelect() {
-		return usermodel.resultMessage(usermodel.select());
+		return usermodel.select();
 	}
 
 	public String UserSearch(String userinfo) {
-		return usermodel.resultMessage(
-				usermodel.select(JSONHelper.string2json(userinfo)));
+		return usermodel.select(JSONHelper.string2json(userinfo));
 	}
 
 	public String UserFind(String id) {
@@ -99,12 +93,12 @@ public class user {
 	}
 
 	public String UserPage(int idx, int pageSize) {
-		return usermodel.resultMessage(usermodel.page(idx, pageSize));
+		return usermodel.page(idx, pageSize);
 	}
 
 	public String UserPageBy(int idx, int pageSize, String userinfo) {
 		JSONObject object = JSONHelper.string2json(userinfo);
-		return usermodel.resultMessage(usermodel.page(idx, pageSize, object));
+		return usermodel.page(idx, pageSize, object);
 	}
 
 	public String UserDelect(String id) {
@@ -112,13 +106,11 @@ public class user {
 	}
 
 	public String UserBatchDelect(String ids) {
-		return usermodel.resultMessage(usermodel.delect(ids.split(",")),
-				"批量操作成功");
+		return usermodel.resultMessage(usermodel.delect(ids.split(",")), "批量操作成功");
 	}
 
 	public String AddLeader(String info) {
-		JSONObject object = usermodel.AddMap(defcol,
-				JSONHelper.string2json(info));
+		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(info));
 		return usermodel.resultMessage(usermodel.register(object), "新增用户成功");
 	}
 }

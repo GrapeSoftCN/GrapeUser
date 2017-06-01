@@ -15,6 +15,7 @@ import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.jGrapeFW_Message;
+import nlogger.nlogger;
 import rpc.execRequest;
 
 public class RolesModel {
@@ -28,13 +29,14 @@ public class RolesModel {
 		// String info = session.get("username").toString();
 		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
 		// role = new DBHelper("mongodb", "userGroup");
-		role = new DBHelper(appsProxy.configValue().get("db").toString(),
-				"userGroup");
+		role = new DBHelper(appsProxy.configValue().get("db").toString(), "userGroup");
 		_form = role.getChecker();
 	}
-	private db bind(){
+
+	private db bind() {
 		return role.bind(String.valueOf(appsProxy.appid()));
 	}
+
 	public RolesModel() {
 		_form.putRule("name", formHelper.formdef.notNull);
 	}
@@ -42,33 +44,53 @@ public class RolesModel {
 	@SuppressWarnings("unchecked")
 	public int insert(JSONObject object) {
 		// object.put("wbid", wbid);
-		if (!_form.checkRuleEx(object)) {
-			return 1; // 必填字段没有填
-		}
-		if (select(object.get("name").toString()) != null) {
-			return 2; // 角色已存在
-		}
-		JSONObject obj = new JSONObject();
-		obj.put("name", object.get("name").toString());
-		String tip = execRequest
-				._run("GrapeAuth/Auth/AddAuth/s:" + obj.toString(), null)
-				.toString();
-		long code = (long) JSONHelper.string2json(tip).get("errorcode");
-		if (code == 0) {
-			Object object2 = bind().data(object).insertOnce();
-			if (object2 != null) {
-				return 0;
+		int code = 99;
+		if (object != null) {
+			try {
+				if (!_form.checkRuleEx(object)) {
+					return 1; // 必填字段没有填
+				}
+				if (select(object.get("name").toString()) != null) {
+					return 2; // 角色已存在
+				}
+				// JSONObject obj = new JSONObject();
+				// obj.put("name", object.get("name").toString());
+				// String tip = execRequest._run("GrapeAuth/Auth/AddAuth/s:" +
+				// obj.toString(), null).toString();
+				// long code = (long)
+				// JSONHelper.string2json(tip).get("errorcode");
+				// if (code == 0) {
+				Object object2 = bind().data(object).insertOnce();
+				// if (object2 != null) {
+				// return 0;
+				// }
+				// tip = execRequest._run("GrapeAuth/Auth/DeleteAuth/s:" +
+				// object.get("name").toString(), null).toString();
+				// code = (long) JSONHelper.string2json(tip).get("errorcode");
+				// }
+				code = (object2 != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
 			}
-			tip = execRequest._run("GrapeAuth/Auth/DeleteAuth/s:"
-					+ object.get("name").toString(), null).toString();
-			code = (long) JSONHelper.string2json(tip).get("errorcode");
 		}
-		return code == 0 ? 0 : 99;
+		return code;
 	}
 
 	public int update(String id, JSONObject object) {
-		return bind().eq("_id", new ObjectId(id)).data(object).update() != null
-				? 0 : 99;
+		int code = 99;
+		JSONObject obj = null;
+		if (object != null) {
+			try {
+				obj = new JSONObject();
+				obj = bind().eq("_id", new ObjectId(id)).data(object).update();
+				code = (obj != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
+		}
+		return code;
 	}
 
 	/**
@@ -79,113 +101,203 @@ public class RolesModel {
 	 */
 	@SuppressWarnings("unchecked")
 	public int update(JSONObject object) {
-		int code = 0;
+		int code = 99;
 		JSONObject _obj = new JSONObject();
-		if (object.containsKey("fatherid") && object.containsKey("sort")) {
-			_obj.put("fatherid", object.get("fatherid"));
-			_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
-			code = bind().eq("_id", object.get("_id").toString()).data(_obj)
-					.update() != null ? 0 : 99;
-		} else {
-			if (object.containsKey("fatherid")) {
-				code = setFatherId(object.get("_id").toString(),
-						object.get("fatherid").toString());
-			} else {
-				code = setsort(object.get("_id").toString(),
-						Integer.parseInt(object.get("sort").toString()));
+		if (object != null) {
+			try {
+				if (object.containsKey("fatherid") && object.containsKey("sort")) {
+					_obj.put("fatherid", object.get("fatherid"));
+					_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
+					code = bind().eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
+				} else {
+					if (object.containsKey("fatherid")) {
+						code = setFatherId(object.get("_id").toString(), object.get("fatherid").toString());
+					} else {
+						code = setsort(object.get("_id").toString(), Integer.parseInt(object.get("sort").toString()));
+					}
+				}
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
 			}
 		}
 		return code;
 	}
 
-	public JSONArray select(JSONObject object) {
-		for (Object object2 : object.keySet()) {
-			bind().eq(object2.toString(), object.get(object2.toString()));
+	public String select(JSONObject object) {
+		JSONArray array = null;
+		if (object != null) {
+			try {
+				array = new JSONArray();
+				for (Object object2 : object.keySet()) {
+					bind().eq(object2.toString(), object.get(object2.toString()));
+				}
+				array = bind().limit(20).select();
+			} catch (Exception e) {
+				nlogger.logout(e);
+				array = null;
+			}
 		}
-		return bind().limit(20).select();
+		return resultMessage(array);
 	}
 
-	public JSONObject select(String name) {
-		return bind().eq("name", name).find();
+	public String select(String name) {
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			object = bind().eq("name", name).find();
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object = null;
+		}
+		return resultMessage(object);
 	}
 
 	@SuppressWarnings("unchecked")
-	public JSONObject page(int idx, int pageSize) {
-		JSONArray array = bind().page(idx, pageSize);
-		JSONObject object = new JSONObject();
-		object.put("totalSize",
-				(int) Math.ceil((double) bind().count() / pageSize));
-		object.put("currentPage", idx);
-		object.put("pageSize", pageSize);
-		object.put("data", array);
-		return object;
+	public String page(int idx, int pageSize) {
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			JSONArray array = bind().page(idx, pageSize);
+			object = new JSONObject();
+			object.put("totalSize", (int) Math.ceil((double) bind().count() / pageSize));
+			object.put("currentPage", idx);
+			object.put("pageSize", pageSize);
+			object.put("data", array);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object = null;
+		}
+		return resultMessage(object);
 	}
 
 	@SuppressWarnings("unchecked")
-	public JSONObject page(int idx, int pageSize, JSONObject object) {
-		for (Object object2 : object.keySet()) {
-			bind().eq(object2.toString(), object.get(object2.toString()));
+	public String page(int idx, int pageSize, JSONObject object) {
+		JSONObject obj = null;
+		if (object != null) {
+			try {
+				obj = new JSONObject();
+				for (Object object2 : object.keySet()) {
+					bind().eq(object2.toString(), object.get(object2.toString()));
+				}
+				JSONArray array = bind().dirty().page(idx, pageSize);
+				obj = new JSONObject();
+				obj.put("totalSize", (int) Math.ceil((double) bind().count() / pageSize));
+				obj.put("currentPage", idx);
+				obj.put("pageSize", pageSize);
+				obj.put("data", array);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				object = null;
+			}
 		}
-		JSONArray array = bind().dirty().page(idx, pageSize);
-		JSONObject objects = new JSONObject();
-		objects.put("totalSize",
-				(int) Math.ceil((double) bind().count() / pageSize));
-		objects.put("currentPage", idx);
-		objects.put("pageSize", pageSize);
-		objects.put("data", array);
-		return objects;
+		return resultMessage(object);
 	}
 
 	public int delete(String id) {
-		return bind().eq("_id", new ObjectId(id)).delete() != null ? 0 : 99;
+		int code = 99;
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			object = bind().eq("_id", new ObjectId(id)).delete();
+			code = (object != null ? 0 : 99);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
+		}
+		return code;
 	}
 
 	public int delete(String[] arr) {
-		bind().or();
-		for (String string : arr) {
-			bind().eq("_id", string);
+		int code = 99;
+		try {
+			bind().or();
+			for (int i = 0; i < arr.length; i++) {
+				bind().eq("_id", new ObjectId(arr[i]));
+			}
+			long codes = bind().deleteAll();
+			code = (Integer.parseInt(String.valueOf(codes)) == arr.length ? 0 : 99);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
 		}
-		return bind().deleteAll() != arr.length ? 0 : 99;
+		return code;
 	}
 
 	@SuppressWarnings("unchecked")
 	public int setsort(String id, int num) {
-		JSONObject _obj = new JSONObject();
-		_obj.put("sort", num);
-		return bind().eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
-				: 99;
+		int code = 99;
+		JSONObject object = new JSONObject();
+		object.put("sort", num);
+		if (object != null) {
+			try {
+				JSONObject obj = bind().eq("_id", new ObjectId(id)).data(object).update();
+				code = (obj != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
+		}
+		return code;
 	}
 
 	@SuppressWarnings("unchecked")
 	public int setFatherId(String id, String fatherid) {
-		JSONObject _obj = new JSONObject();
-		_obj.put("fatherid", fatherid);
-		return bind().eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
-				: 99;
+		int code = 99;
+		JSONObject object = new JSONObject();
+		object.put("fatherid", fatherid);
+		if (object != null) {
+			try {
+				JSONObject obj = bind().eq("_id", new ObjectId(id)).data(object).update();
+				code = (obj != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
+		}
+		return code;
 	}
 
 	@SuppressWarnings("unchecked")
 	public int setPlv(String id, String plv) {
-		JSONObject _obj = new JSONObject();
-		_obj.put("plv", plv);
-		return bind().eq("_id", new ObjectId(id)).data(_obj).update() != null ? 0
-				: 99;
+		int code = 99;
+		JSONObject object = new JSONObject();
+		object.put("plv", plv);
+		if (object != null) {
+			try {
+				JSONObject obj = bind().eq("_id", new ObjectId(id)).data(object).update();
+				code = (obj != null ? 0 : 99);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
+		}
+		return code;
 	}
 
 	// 获取角色plv
-	public JSONObject getRole(String ugid) {
-		return bind().eq("_id", new ObjectId(ugid)).find();
+	public String getRole(String ugid) {
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			object = bind().eq("_id", new ObjectId(ugid)).find();
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object = null;
+		}
+		return resultMessage(object);
 	}
 
 	@SuppressWarnings("unchecked")
 	public JSONObject addMap(HashMap<String, Object> map, JSONObject object) {
-		if (map.entrySet() != null) {
-			Iterator<Entry<String, Object>> iterator = map.entrySet()
-					.iterator();
-			while (iterator.hasNext()) {
-				Map.Entry<String, Object> entry = iterator.next();
-				if (!object.containsKey(entry.getKey())) {
-					object.put(entry.getKey(), entry.getValue());
+		if (object != null) {
+			if (map.entrySet() != null) {
+				Iterator<Entry<String, Object>> iterator = map.entrySet().iterator();
+				while (iterator.hasNext()) {
+					Map.Entry<String, Object> entry = iterator.next();
+					if (!object.containsKey(entry.getKey())) {
+						object.put(entry.getKey(), entry.getValue());
+					}
 				}
 			}
 		}
@@ -194,12 +306,18 @@ public class RolesModel {
 
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONObject object) {
+		if (object == null) {
+			object = new JSONObject();
+		}
 		_obj.put("records", object);
 		return resultMessage(0, _obj.toString());
 	}
 
 	@SuppressWarnings("unchecked")
 	public String resultMessage(JSONArray array) {
+		if (array == null) {
+			array = new JSONArray();
+		}
 		_obj.put("records", array);
 		return resultMessage(0, _obj.toString());
 	}

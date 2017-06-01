@@ -1,8 +1,13 @@
 package interfaceApplication;
 
+import java.io.FileInputStream;
+import java.util.Properties;
+
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+
+import com.alibaba.druid.support.logging.Log;
 
 import apps.appsProxy;
 import database.db;
@@ -20,8 +25,7 @@ public class wechatUser {
 	private static DBHelper opHelper;
 	private static formHelper form;
 	static {
-		opHelper = new DBHelper(appsProxy.configValue().get("db").toString(),
-				"UserOpenId");
+		opHelper = new DBHelper(appsProxy.configValue().get("db").toString(), "UserOpenId");
 		form = opHelper.getChecker();
 	}
 
@@ -31,43 +35,49 @@ public class wechatUser {
 
 	@SuppressWarnings("unchecked")
 	public String insertOpenId(String info) {
+		int code = 99;
 		JSONObject object = JSONHelper.string2json(info);
-		object.remove("type");
-		if (!object.containsKey("isdelete")) {
-			object.put("isdelete", "0");
+		if (object != null) {
+			try {
+				object.remove("type");
+				if (!object.containsKey("isdelete")) {
+					object.put("isdelete", "0");
+				}
+				if (!object.containsKey("time")) { // 操作时间
+					object.put("time", TimeHelper.nowMillis() + "");
+				}
+				object.put("kickTime", ""); // 封号时间：默认为""，0为永久封号
+				form.putRule("openid", formdef.notNull);
+				form.putRule("name", formdef.notNull);
+				form.putRule("phone", formdef.notNull);
+				if (!form.checkRuleEx(object)) {
+					return resultMessage(1);
+				}
+				if (!checkHelper.checkMobileNumber(object.get("phone").toString())) {
+					return resultMessage(2); // 手机号格式错误
+				}
+				String openid = object.get("openid").toString();
+				String userinfo = appsProxy
+						.proxyCall(callHost(), appsProxy.appid() + "/30/Wechat/getUserInfo/s:" + openid, null, "")
+						.toString();
+				if (JSONHelper.string2json(userinfo) != null) {
+					String message = JSONHelper.string2json(userinfo).get("message").toString();
+					String records = JSONHelper.string2json(message).get("records").toString();
+					String headimgurl = JSONHelper.string2json(records).get("headimgurl").toString();
+					object.put("headimgurl", headimgurl);
+					code = openIdBind().data(object).insertOnce() != null ? 0 : 99;
+				}
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
 		}
-		if (!object.containsKey("time")) { // 操作时间
-			object.put("time", TimeHelper.nowMillis() + "");
-		}
-		object.put("kickTime", ""); // 封号时间：默认为""，0为永久封号
-		form.putRule("openid", formdef.notNull);
-		form.putRule("name", formdef.notNull);
-		form.putRule("phone", formdef.notNull);
-		if (!form.checkRuleEx(object)) {
-			return resultMessage(1);
-		}
-		if (!checkHelper.checkMobileNumber(object.get("phone").toString())) {
-			return resultMessage(2); // 手机号格式错误
-		}
-		String openid = object.get("openid").toString();
-		String userinfo = appsProxy
-				.proxyCall("123.57.214.226:801",
-						appsProxy.appid()+"/30/Wechat/getUserInfo/s:"
-								+ openid,null, "")
-				.toString();
-		String message = JSONHelper.string2json(userinfo).get("message")
-				.toString();
-		String records = JSONHelper.string2json(message).get("records").toString();
-		String headimgurl = JSONHelper.string2json(records).get("headimgurl")
-				.toString();
-		object.put("headimgurl", headimgurl);
-		int code = openIdBind().data(object).insertOnce() != null ? 0 : 99;
 		return resultMessage(code);
 	}
 
 	public String FindOpenId(String openid) {
 		JSONObject object = openIdBind().eq("openid", openid).find();
-		return resultMessage(0, object != null ? object.toString() : "");
+		return resultMessage(object);
 	}
 
 	public String FindById(String id) {
@@ -78,16 +88,15 @@ public class wechatUser {
 	// 用户封号,定时解封
 	public String KickUser(String openid, String info) {
 		JSONObject object = JSONHelper.string2json(info);
-		if( object != null ){
-			String  message = FindOpenId(openid);
-			if( message != null && !"".equals(message) ){
+		if (object != null) {
+			String message = FindOpenId(openid);
+			if (JSONHelper.string2json(message) != null) {
 				String record = JSONHelper.string2json(message).get("message").toString();
 				if (!("").equals(record)) {
 					if (object.containsKey("content")) {
 						object.remove("content");
 					}
-					int code = openIdBind().eq("openid", openid).data(object)
-							.update() != null ? 0 : 99;
+					int code = openIdBind().eq("openid", openid).data(object).update() != null ? 0 : 99;
 					return resultMessage(code, "操作成功");
 				}
 			}
@@ -97,73 +106,106 @@ public class wechatUser {
 
 	@SuppressWarnings("unchecked")
 	public String page(int ids, int pageSize) {
-		JSONArray array = openIdBind().page(ids, pageSize);
-		JSONObject object = new JSONObject();
-		object.put("totalSize",
-				(int) Math.ceil((double) openIdBind().count() / pageSize));
-		object.put("pageSize", pageSize);
-		object.put("currentPage", ids);
-		object.put("data", array);
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			JSONArray array = openIdBind().page(ids, pageSize);
+			object.put("totalSize", (int) Math.ceil((double) openIdBind().count() / pageSize));
+			object.put("currentPage", ids);
+			object.put("pageSize", pageSize);
+			object.put("data", array);
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object = null;
+		}
 		return resultMessage(object);
 	}
 
 	@SuppressWarnings("unchecked")
 	public String pageby(int ids, int pageSize, String info) {
-		openIdBind().and();
+		JSONObject object = null;
 		JSONObject objects = JSONHelper.string2json(info);
-		for (Object obj : objects.keySet()) {
-			if (obj.equals("_id")) {
-				openIdBind().eq("_id",
-						new ObjectId(objects.get("_id").toString()));
-			}
-			openIdBind().eq(obj.toString(), objects.get(obj.toString()));
+		if (objects!=null) {
+			try {
+				openIdBind().and();
+				for (Object obj : objects.keySet()) {
+					if (obj.equals("_id")) {
+						openIdBind().eq("_id", new ObjectId(objects.get("_id").toString()));
+					}
+					openIdBind().eq(obj.toString(), objects.get(obj.toString()));
 
+				}
+				JSONArray array = openIdBind().dirty().page(ids, pageSize);
+				object = new JSONObject();
+				object.put("totalSize", (int) Math.ceil((double) openIdBind().count() / pageSize));
+				object.put("pageSize", pageSize);
+				object.put("currentPage", ids);
+				object.put("data", array);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				object = null;
+			}
 		}
-		JSONArray array = openIdBind().dirty().page(ids, pageSize);
-		JSONObject object = new JSONObject();
-		object.put("totalSize",
-				(int) Math.ceil((double) openIdBind().count() / pageSize));
-		object.put("pageSize", pageSize);
-		object.put("currentPage", ids);
-		object.put("data", array);
 		return resultMessage(object);
 	}
 
 	public String unkick() {
-		nlogger.logout(appsProxy.appid());
-		int code = 0;
-		int totalSize = (int) Math
-				.ceil((double) openIdBind().eq("isdelete", "1").count() / 10);
-		for (int i = 0; i < totalSize; i++) {
-			JSONArray array = openIdBind().page(i, 10);
-			code = judge(array);
+		int code = 99;
+		try {
+			int totalSize = (int) Math.ceil((double) openIdBind().eq("isdelete", "1").count() / 10);
+			for (int i = 0; i < totalSize; i++) {
+				JSONArray array = openIdBind().page(i, 10);
+				code = judge(array);
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
 		}
 		return resultMessage(code, "解封成功");
 	}
 
+	private String callHost() {
+		return getAppIp("host").split("/")[0];
+	}
+
+	private String getAppIp(String key) {
+		String value = "";
+		try {
+			Properties pro = new Properties();
+			pro.load(new FileInputStream("URLConfig.properties"));
+			value = pro.getProperty(key);
+		} catch (Exception e) {
+			value = "";
+		}
+		return value;
+	}
+
 	@SuppressWarnings("unchecked")
 	private int judge(JSONArray array) {
-		int code = 0;
-		for (int i = 0; i < array.size(); i++) {
-			JSONObject object = (JSONObject) array.get(i);
-			if ("0".equals(object.get("kickTime").toString())) {
-				break;
+		int code = 99;
+		if (array.size()!=0) {
+			try {
+				for (int i = 0; i < array.size(); i++) {
+					JSONObject object = (JSONObject) array.get(i);
+					if ("0".equals(object.get("kickTime").toString())) {
+						break;
+					}
+					long opTime = Long.parseLong(object.get("time").toString());
+					long kickTime = Long.parseLong(object.get("kickTime").toString());
+					String totalTime = TimeHelper.stampToDate(kickTime * 3600 * 24 * 1000 + opTime).split(" ")[0];
+					String currentTime = TimeHelper.stampToDate(TimeHelper.nowMillis()).split(" ")[0];
+					if (!totalTime.equals(currentTime)) {
+						break;
+					}
+					object.put("isdelete", "0");
+					object.put("kickTime", "");
+					object.put("time", TimeHelper.nowMillis() + "");
+					code = openIdBind().eq("openid", object.get("openid").toString()).data(object).update() != null ? 0 : 99;
+				}
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
 			}
-			long opTime = Long.parseLong(object.get("time").toString());
-			long kickTime = Long.parseLong(object.get("kickTime").toString());
-			String totalTime = TimeHelper
-					.stampToDate(kickTime * 3600 * 24 * 1000 + opTime)
-					.split(" ")[0];
-			String currentTime = TimeHelper.stampToDate(TimeHelper.nowMillis())
-					.split(" ")[0];
-			if (!totalTime.equals(currentTime)) {
-				break;
-			}
-			object.put("isdelete", "0");
-			object.put("kickTime", "");
-			object.put("time", TimeHelper.nowMillis() + "");
-			code = openIdBind().eq("openid", object.get("openid").toString())
-					.data(object).update() != null ? 0 : 99;
 		}
 		return code;
 	}
@@ -175,6 +217,9 @@ public class wechatUser {
 	@SuppressWarnings("unchecked")
 	private String resultMessage(JSONObject object) {
 		JSONObject obj = new JSONObject();
+		if (object != null) {
+			object = new JSONObject();
+		}
 		obj.put("records", object);
 		return resultMessage(0, obj.toString());
 	}
