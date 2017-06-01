@@ -32,16 +32,7 @@ public class userModel {
 	// private static String wbid;
 	private static session session = new session();
 	static {
-		// String name = execRequest.getChannelValue("").toString();
-		// if (session.get(name) != null) {
-		// String info = session.get("username").toString();
-		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-		// users = (DBHelper) new DBHelper("mongodb", "user").bind(wbid);
-		// }else{
-		// users = (DBHelper) new DBHelper("mongodb", "userList");
 		users = (DBHelper) new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
-		// users = new DBHelper("mongodb", "userList");
-		// }
 		_form = users.getChecker();
 	}
 
@@ -145,6 +136,7 @@ public class userModel {
 	// 同时获取所管理网站的id及网站名称
 	@SuppressWarnings("unchecked")
 	private String login(String username, String password, int loginMode) {
+		String sid = "";
 		String _checkField = "";
 		switch (loginMode) {
 		case 0:
@@ -161,21 +153,20 @@ public class userModel {
 		JSONObject object = bind().eq(_checkField, username).eq("password", password).find();
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
-			JSONArray array = getWbID(wbid, object);
+			JSONArray array = getWbID(wbid);
 			object.remove("wbid");
 			object.remove("password");
-			if (wbid.contains(",")) {
-				wbid = wbid.split(",")[0];
-			}
+			wbid = wbid.split(",")[0];
 			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
-			session.setget(username, object.toString());
+			sid = session.createSession(username, object);
+			object.put("sid", sid);
 		}
-		return object != null ? object.toString() : null;
+		return object.toJSONString();
 	}
 
 	@SuppressWarnings("unchecked")
-	private JSONArray getWbID(String wbid, JSONObject object) {
+	private JSONArray getWbID(String wbid ) {
 		JSONArray webs = new JSONArray();
 		JSONObject object2;
 		// String webinfo = execRequest
@@ -183,19 +174,20 @@ public class userModel {
 		// .toString();
 		String webinfo = appsProxy.proxyCall(getAppIp("host").split("/")[0],
 				appsProxy.appid() + "/17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
-//		if (("").equals(webinfo)) {
-//			return webs;
-//		}
-		if (JSONHelper.string2json(webinfo) != null) {
-			String message = JSONHelper.string2json(webinfo).get("message").toString();
-			if (JSONHelper.string2json(message) != null) {
-				String records = JSONHelper.string2json(message).get("records").toString();
+		//wbid对应的信息
+		JSONObject rs = JSONHelper.string2json(webinfo);
+		if (rs != null) {
+			rs = JSONHelper.string2json((String)rs.get("message"));
+			if (rs != null) {
+				String records = rs.get("records").toString();
 				JSONArray array = (JSONArray) JSONValue.parse(records);
-				if (array.size()!=0) {
+				if (array.size() > 0) {
+					JSONObject objects = null;
+					JSONObject objid = null;
 					for (int i = 0, len = array.size(); i < len; i++) {
-						JSONObject objects = new JSONObject();
 						object2 = (JSONObject) array.get(i);
-						JSONObject objid = (JSONObject) object2.get("_id");
+						objid = (JSONObject) object2.get("_id");
+						objects = new JSONObject();
 						objects.put("wbid", objid.get("$oid").toString());
 						objects.put("wbname", object2.get("title").toString());
 						webs.add(objects);
@@ -206,9 +198,8 @@ public class userModel {
 		return webs;
 	}
 
-	public void logout(String UserName) {
-		session session = new session();
-		session.delete("username");
+	public void logout(String sid) {
+		session.deleteSession(sid);
 	}
 
 	public long getpoint_username(String username) {
