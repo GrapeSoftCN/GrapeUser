@@ -80,7 +80,7 @@ public class RolesModel {
 	public int update(String id, JSONObject object) {
 		int code = 99;
 		JSONObject obj = null;
-		if (object != null) {
+		if (object != null && getPlv(id) != 0) {
 			try {
 				obj = new JSONObject();
 				obj = bind().eq("_id", new ObjectId(id)).data(object).update();
@@ -105,15 +105,16 @@ public class RolesModel {
 		JSONObject _obj = new JSONObject();
 		if (object != null) {
 			try {
+				JSONObject obj = (JSONObject) object.get("_id");
 				if (object.containsKey("fatherid") && object.containsKey("sort")) {
 					_obj.put("fatherid", object.get("fatherid"));
 					_obj.put("sort", Integer.parseInt(object.get("sort").toString()));
-					code = bind().eq("_id", object.get("_id").toString()).data(_obj).update() != null ? 0 : 99;
+					code = bind().eq("_id", obj.get("$oid").toString()).data(_obj).update() != null ? 0 : 99;
 				} else {
 					if (object.containsKey("fatherid")) {
-						code = setFatherId(object.get("_id").toString(), object.get("fatherid").toString());
+						code = setFatherId(object.get("$oid").toString(), object.get("fatherid").toString());
 					} else {
-						code = setsort(object.get("_id").toString(), Integer.parseInt(object.get("sort").toString()));
+						code = setsort(object.get("$oid").toString(), Integer.parseInt(object.get("sort").toString()));
 					}
 				}
 			} catch (Exception e) {
@@ -198,9 +199,11 @@ public class RolesModel {
 		int code = 99;
 		JSONObject object = null;
 		try {
-			object = new JSONObject();
-			object = bind().eq("_id", new ObjectId(id)).delete();
-			code = (object != null ? 0 : 99);
+			if (getPlv(id) != 0) {
+				object = new JSONObject();
+				object = bind().eq("_id", new ObjectId(id)).delete();
+				code = (object != null ? 0 : 99);
+			}
 		} catch (Exception e) {
 			nlogger.logout(e);
 			code = 99;
@@ -211,12 +214,16 @@ public class RolesModel {
 	public int delete(String[] arr) {
 		int code = 99;
 		try {
+			int plv = 0;
 			bind().or();
 			for (int i = 0; i < arr.length; i++) {
-				bind().eq("_id", new ObjectId(arr[i]));
+				plv = getPlv(arr[i]);
+				if (plv != 0) {
+					bind().eq("_id", new ObjectId(arr[i]));
+				}
 			}
 			long codes = bind().deleteAll();
-			code = (Integer.parseInt(String.valueOf(codes)) == arr.length ? 0 : 99);
+			code = (Integer.parseInt(String.valueOf(codes)) == (plv == 0 ? arr.length : arr.length - 1) ? 0 : 99);
 		} catch (Exception e) {
 			nlogger.logout(e);
 			code = 99;
@@ -280,12 +287,31 @@ public class RolesModel {
 		JSONObject object = null;
 		try {
 			object = new JSONObject();
-			object = bind().eq("_id", new ObjectId(ugid)).find();
+			object = bind().eq("_id", new ObjectId(ugid)).field("plv").find();
 		} catch (Exception e) {
 			nlogger.logout(e);
 			object = null;
 		}
 		return resultMessage(object);
+	}
+
+	private int getPlv(String id) {
+		int code = 99;
+		try {
+			String roleplv = getRole(id);
+			JSONObject object = JSONHelper.string2json(roleplv);
+			if (object != null) {
+				object = JSONHelper.string2json(object.get("message").toString());
+				if (object != null) {
+					object = JSONHelper.string2json(object.get("records").toString());
+				}
+				code = Integer.parseInt(object.get("plv").toString());
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
+		}
+		return code;
 	}
 
 	@SuppressWarnings("unchecked")

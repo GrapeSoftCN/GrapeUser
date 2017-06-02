@@ -9,18 +9,22 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.xml.bind.attachment.AttachmentMarshaller;
+
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import apps.appsProxy;
+import authority.privilige;
 import database.db;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.formHelper;
 import esayhelper.formHelper.formdef;
 import nlogger.nlogger;
+import rpc.execRequest;
 import esayhelper.jGrapeFW_Message;
 import security.codec;
 import session.session;
@@ -29,6 +33,8 @@ public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
 	private JSONObject _obj = new JSONObject();
+	// private privilige privil = new
+	// privilige(execRequest.getChannelValue("GrapeSID").toString());
 	// private static String wbid;
 	private static session session = new session();
 	static {
@@ -129,13 +135,14 @@ public class userModel {
 				return resultMessage(6, "");
 			}
 		}
-		return login(username, userinfo.get("password").toString(), loginMode);
+		JSONObject object = login(username, userinfo.get("password").toString(), loginMode);
+		return object != null ? object.toString() : null;
 	}
 
 	// 用户登录，默认登录用户能够管理的所有站点的第一个站点，
 	// 同时获取所管理网站的id及网站名称
 	@SuppressWarnings("unchecked")
-	private String login(String username, String password, int loginMode) {
+	private JSONObject login(String username, String password, int loginMode) {
 		String sid = "";
 		String _checkField = "";
 		switch (loginMode) {
@@ -154,46 +161,55 @@ public class userModel {
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
 			JSONArray array = getWbID(wbid);
+			if (array == null) {
+				array = new JSONArray();
+			}
 			object.remove("wbid");
 			object.remove("password");
 			wbid = wbid.split(",")[0];
 			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
 			sid = session.createSession(username, object);
+			System.out.println(sid);
 			object.put("sid", sid);
 		}
-		return object.toJSONString();
+		return object;
 	}
 
 	@SuppressWarnings("unchecked")
-	private JSONArray getWbID(String wbid ) {
-		JSONArray webs = new JSONArray();
+	private JSONArray getWbID(String wbid) {
+		JSONArray webs = null;
 		JSONObject object2;
 		// String webinfo = execRequest
 		// ._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
 		// .toString();
-		String webinfo = appsProxy.proxyCall(getAppIp("host").split("/")[0],
-				appsProxy.appid() + "/17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
-		//wbid对应的信息
-		JSONObject rs = JSONHelper.string2json(webinfo);
-		if (rs != null) {
-			rs = JSONHelper.string2json((String)rs.get("message"));
+		try {
+			webs = new JSONArray();
+			String webinfo = appsProxy.proxyCall(getAppIp("host").split("/")[0],
+					appsProxy.appid() + "/17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
+			// wbid对应的信息
+			JSONObject rs = JSONHelper.string2json(webinfo);
 			if (rs != null) {
-				String records = rs.get("records").toString();
-				JSONArray array = (JSONArray) JSONValue.parse(records);
-				if (array.size() > 0) {
-					JSONObject objects = null;
-					JSONObject objid = null;
-					for (int i = 0, len = array.size(); i < len; i++) {
-						object2 = (JSONObject) array.get(i);
-						objid = (JSONObject) object2.get("_id");
-						objects = new JSONObject();
-						objects.put("wbid", objid.get("$oid").toString());
-						objects.put("wbname", object2.get("title").toString());
-						webs.add(objects);
+				rs = JSONHelper.string2json(rs.get("message").toString());
+				if (rs != null) {
+					String records = rs.get("records").toString();
+					JSONArray array = (JSONArray) JSONValue.parse(records);
+					if (array.size() > 0) {
+						JSONObject objects = null;
+						JSONObject objid = null;
+						for (int i = 0, len = array.size(); i < len; i++) {
+							object2 = (JSONObject) array.get(i);
+							objid = (JSONObject) object2.get("_id");
+							objects = new JSONObject();
+							objects.put("wbid", objid.get("$oid").toString());
+							objects.put("wbname", object2.get("title").toString());
+							webs.add(objects);
+						}
 					}
 				}
 			}
+		} catch (Exception e) {
+			webs = null;
 		}
 		return webs;
 	}
@@ -304,17 +320,33 @@ public class userModel {
 	@SuppressWarnings("unchecked")
 	public String page(int idx, int pageSize) {
 		JSONObject object = null;
-		try {
-			object = new JSONObject();
-			JSONArray array = bind().page(idx, pageSize);
-			object = new JSONObject();
-			object.put("totalSize", (int) Math.ceil((double) bind().count() / pageSize));
-			object.put("currentPage", idx);
-			object.put("pageSize", pageSize);
-			object.put("data", array);
-		} catch (Exception e) {
-			nlogger.logout(e);
-			object = null;
+		JSONArray array = new JSONArray();
+		Object objects = execRequest.getChannelValue("sid");
+		System.out.println(objects);
+		JSONObject obj = getSessPlv(objects);
+		if (obj != null) {
+			try {
+				// 获取角色权限
+				int roleplv = Integer.parseInt(obj.get("rolePlv").toString());
+				if (roleplv > 10000) {
+					array = bind().page(idx, pageSize);
+				}
+				if (roleplv > 5000 && roleplv <= 10000) {
+					array = bind().eq("wbid", (String) obj.get("currentWeb")).page(idx, pageSize);
+				}
+				if (roleplv > 3000 && roleplv <= 5000) {
+					JSONObject oid = (JSONObject) obj.get("_id");
+					array = bind().like("ownid", oid.get("$oid").toString()).eq("wbid", (String) obj.get("currentWeb")).page(idx, pageSize);
+				}
+				object = new JSONObject();
+				object.put("totalSize", (int) Math.ceil((double) array.size() / pageSize));
+				object.put("currentPage", idx);
+				object.put("pageSize", pageSize);
+				object.put("data", array);
+			} catch (Exception e) {
+				nlogger.logout(e);
+				object = null;
+			}
 		}
 		return resultMessage(object);
 	}
@@ -440,8 +472,118 @@ public class userModel {
 	}
 
 	// 中断当前操作，等待用户输入验证码
-	public void breakCurrent(String ckcode, String uniqueName) {
+	// public void breakCurrent(String ckcode, String uniqueName) {
+	//
+	// }
+	private JSONObject FindByPrimary(String _id) {
+		JSONObject object = null;
+		try {
+			object = new JSONObject();
+			object = bind().eq("_id", new ObjectId(_id)).field("wbid").find();
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object = null;
+		}
+		return object;
+	}
 
+	// 设置网站管理员，userid为用户表 _id 字段
+	@SuppressWarnings("unchecked")
+	public String FindWb(String wbid, String userid) {
+		int code = 99;
+		// 获取该用户已拥有的网站
+		JSONObject object = FindByPrimary(userid);
+		if (object != null) {
+			try {
+				String tempwbid = (String) object.get("wbid");
+				if (!("").equals(tempwbid)) {
+					wbid = String.join(",", wbid, tempwbid);
+				}
+				object.put("wbid", wbid);
+				code = bind().eq("_id", new ObjectId(userid)).data(object).update() != null ? 0 : 99;
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 99;
+			}
+		}
+		return resultMessage(code, "设置网站管理员成功");
+	}
+
+	// public JSONArray FindByWbid(String wbid){
+	// JSONArray array = null;
+	// try {
+	// array = new JSONArray();
+	// array = bind().eq("wbid", wbid).limit(50).select();
+	// } catch (Exception e) {
+	// nlogger.logout(e);
+	// array = null;
+	// }
+	// return array;
+	// }
+	// 获取会话信息
+	@SuppressWarnings("unchecked")
+	private JSONObject getSessPlv(Object object) {
+		JSONObject object2 = null;
+		session session = new session();
+		try {
+			JSONObject objects = new JSONObject();
+			int roleplv = 0;
+			object2 = new JSONObject();
+			if (object != null) {
+				object2 = session.getSession(object.toString());
+				if (object2 != null) {
+					String info = appsProxy.proxyCall(getAppIp("host").split("/")[0],
+							appsProxy.appid()+"/16/roles/getRole/" + object2.get("ugid").toString(), null, "").toString();
+					objects = JSONHelper.string2json(info);
+					if (objects!=null) {
+						objects = JSONHelper.string2json(objects.get("message").toString());
+					}
+					if (objects!=null) {
+						objects = JSONHelper.string2json(objects.get("records").toString());
+					}
+					if (objects!=null) {
+						roleplv = Integer.parseInt(objects.get("plv").toString());
+					}
+				}
+				object2.put("rolePlv", roleplv);
+			} else {
+				object2.put("rolePlv", 0);
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object2 = null;
+		}
+		return object2;
+	}
+
+	// 获取角色
+	private int getRole(Object object) {
+		int code = 0;
+		JSONObject obj = getSessPlv(object);
+		if (obj != null) {
+			try {
+				int plv = Integer.parseInt((String) obj.get("rolePLV"));
+				if (plv == 0) {
+					code = 0;
+				}
+				if (plv > 1000 && plv <= 3000) {
+					code = 1;
+				}
+				if (plv > 3000 && plv <= 5000) {
+					code = 2;
+				}
+				if (plv > 5000 && plv <= 10000) {
+					code = 3;
+				}
+				if (plv > 10000) {
+					code = 4;
+				}
+			} catch (Exception e) {
+				nlogger.logout(e);
+				code = 0;
+			}
+		}
+		return code;
 	}
 
 	//

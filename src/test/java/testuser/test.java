@@ -15,7 +15,7 @@ public class test {
 		try {
 			System.out.println("GrapeUser!");
 			System.setProperty("AppName", "GrapeUser");
-			booter.start(1008);
+			booter.start(6008);
 		} catch (Exception e) {
 			// TODO: handle exception
 		}

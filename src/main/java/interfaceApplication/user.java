@@ -49,6 +49,7 @@ public class user {
 	 * @return 除密码之外的数据
 	 */
 	public String UserLogin(String userInfo) {
+		System.out.println("123");
 		String mString = "";
 		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
 		if (usersinfo != null) {
@@ -112,5 +113,14 @@ public class user {
 	public String AddLeader(String info) {
 		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(info));
 		return usermodel.resultMessage(usermodel.register(object), "新增用户成功");
+	}
+	//设置网站管理员
+	public String FindWbBySid(String wbid,String userid) {
+		return usermodel.FindWb(wbid, userid);
+	}
+	
+	//根据网站id显示数据
+	public void getUser(String wbid) {
+		
 	}
 }

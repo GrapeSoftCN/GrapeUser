@@ -8,6 +8,7 @@ import org.json.simple.JSONValue;
 
 import esayhelper.JSONHelper;
 import model.RolesModel;
+import nlogger.nlogger;
 
 public class roles {
 	private RolesModel rolesModel = new RolesModel();
@@ -47,7 +48,7 @@ public class roles {
 	public String RoleUpdateBatch(String arraystring) {
 		int code = 99;
 		JSONArray array = (JSONArray) JSONValue.parse(arraystring);
-		if (array.size()!=0) {
+		if (array.size() != 0) {
 			for (int i = 0; i < array.size(); i++) {
 				if (code != 0) {
 					return rolesModel.resultMessage(2, "");
