@@ -15,6 +15,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import apps.appsProxy;
+import authority.privilige;
 import database.db;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
@@ -30,18 +31,19 @@ public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
 	private JSONObject _obj = new JSONObject();
-	// private static String wbid;
+	private JSONObject UserInfo = new JSONObject();
 	private static session session = new session();
 	static {
 		users = (DBHelper) new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
 		_form = users.getChecker();
 	}
-
+	
 	private db bind() {
 		return users.bind(String.valueOf(appsProxy.appid()));
 	}
 
 	public userModel() {
+		UserInfo = session.getSession((String) execRequest.getChannelValue("sid"));
 		_form.putRule("id", formdef.notNull);
 		// _form.putRule("password", formdef.notNull);
 		_form.putRule("name", formdef.notNull);
@@ -352,36 +354,30 @@ public class userModel {
 
 	@SuppressWarnings("unchecked")
 	public String page(int idx, int pageSize) {
-		JSONObject object = null;
+		JSONObject object = new JSONObject();
 		JSONArray array = new JSONArray();
-		Object objects = execRequest.getChannelValue("sid");
-		System.out.println(objects);
-		JSONObject obj = getSessPlv(objects);
-		if (obj != null) {
+		int roleSign = getRoleSign();
+		if (UserInfo != null) {
 			try {
 				// 获取角色权限
-				int roleplv = Integer.parseInt(obj.get("rolePlv").toString());
-				if (roleplv > 10000) {
+				if (roleSign == 5 || roleSign == 4) {
 					array = bind().page(idx, pageSize);
 				}
-				if (roleplv > 5000 && roleplv <= 10000) {
-					array = bind().eq("wbid", (String) obj.get("currentWeb")).page(idx, pageSize);
+				if (roleSign == 3) {
+					array = bind().eq("wbid", (String) UserInfo.get("currentWeb")).page(idx, pageSize);
 				}
-				if (roleplv > 3000 && roleplv <= 5000) {
-					JSONObject oid = (JSONObject) obj.get("_id");
-					array = bind().like("ownid", oid.get("$oid").toString()).eq("wbid", (String) obj.get("currentWeb"))
-							.page(idx, pageSize);
-				}
-				object = new JSONObject();
 				object.put("totalSize", (int) Math.ceil((double) array.size() / pageSize));
-				object.put("currentPage", idx);
-				object.put("pageSize", pageSize);
-				object.put("data", array);
+				
 			} catch (Exception e) {
 				nlogger.logout(e);
-				object = null;
+				object.put("totalSize", 0);
 			}
+		}else{
+			object.put("totalSize", 0);
 		}
+		object.put("currentPage", idx);
+		object.put("pageSize", pageSize);
+		object.put("data", array);
 		return resultMessage(object);
 	}
 
@@ -509,13 +505,13 @@ public class userModel {
 		return codec.md5(passwd);
 	}
 
-	//excel导入数据到数据库
+	// excel导入数据到数据库
 	public String Import(JSONArray array) {
 		int code = 0;
 		for (int i = 0; i < array.size(); i++) {
 			if (code == 0) {
 				code = bind().data((JSONObject) array.get(i)).insertOnce() != null ? 0 : 99;
-			}else{
+			} else {
 				code = 99;
 			}
 		}
@@ -526,6 +522,46 @@ public class userModel {
 	// public void breakCurrent(String ckcode, String uniqueName) {
 	//
 	// }
+	/**
+	 * 根据角色plv，获取角色级别
+	 * 
+	 * @project GrapeSuggest
+	 * @package interfaceApplication
+	 * @file Suggest.java
+	 * 
+	 * @return
+	 *
+	 */
+	private int getRoleSign() {
+		int roleSign = 0; // 游客
+		String sid = (String) execRequest.getChannelValue("sid");
+		if (!sid.equals("0")) {
+			try {
+				privilige privil = new privilige(sid);
+				int roleplv = privil.getRolePV();
+				if (roleplv >= 1000 && roleplv < 3000) {
+					roleSign = 1; // 普通用户即企业员工
+				}
+				if (roleplv >= 3000 && roleplv < 5000) {
+					roleSign = 2; // 栏目管理员
+				}
+				if (roleplv >= 5000 && roleplv < 8000) {
+					roleSign = 3; // 企业管理员
+				}
+				if (roleplv >= 8000 && roleplv < 10000) {
+					roleSign = 4; // 监督管理员
+				}
+				if (roleplv >= 10000) {
+					roleSign = 5; // 总管理员
+				}
+			} catch (Exception e) {
+				nlogger.logout(e);
+				roleSign = 0;
+			}
+		}
+		return roleSign;
+	}
+
 	private JSONObject FindByPrimary(String _id) {
 		JSONObject object = null;
 		try {

@@ -8,11 +8,14 @@ import java.util.List;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import authority.privilige;
 import esayhelper.JSONHelper;
 import jxl.Sheet;
 import jxl.SheetSettings;
 import jxl.Workbook;
 import model.userModel;
+import nlogger.nlogger;
+import rpc.execRequest;
 import security.codec;
 
 @SuppressWarnings("unchecked")
@@ -122,53 +125,57 @@ public class user {
 		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(info));
 		return usermodel.resultMessage(usermodel.register(object), "新增用户成功");
 	}
-	//设置网站管理员
-	public String FindWbBySid(String wbid,String userid) {
+
+	// 设置网站管理员
+	public String FindWbBySid(String wbid, String userid) {
 		return usermodel.FindWb(wbid, userid);
 	}
-	//根据用户名和身份证号查询数据
-	public String findByCard(String name,String IDCard) {
+
+	// 根据用户名和身份证号查询数据
+	public String findByCard(String name, String IDCard) {
 		return usermodel.findUserByCard(name, IDCard).toString();
 	}
-	//从excel表中导入数据到数据库表中
+
+	// 从excel表中导入数据到数据库表中
 	public String ExcelImport(String filepath) {
 		filepath = codec.DecodeHtmlTag(filepath);
 		JSONArray array = new JSONArray();
 		List<JSONObject> list = getAllByExcel(filepath);
-		if (list==null) {
-			return usermodel.resultMessage(11,"");
+		if (list == null) {
+			return usermodel.resultMessage(11, "");
 		}
 		for (JSONObject jsonObject : list) {
 			array.add(jsonObject);
 		}
 		return usermodel.Import(array);
 	}
-	private List<JSONObject> getAllByExcel(String file){
-	    List<JSONObject> list=null;
-	    JSONObject object = new JSONObject();
-	    try {
-	    	list = new ArrayList<>();
-	        Workbook rwb=Workbook.getWorkbook(new File(file));
-	        Sheet[] value = rwb.getSheets();
-	        for (Sheet rs : value) {
-	        	int clos=rs.getColumns();//得到所有的列
-		        int rows=rs.getRows();//得到所有的行
-		        if (clos ==0 && rows ==0) {
+
+	private List<JSONObject> getAllByExcel(String file) {
+		List<JSONObject> list = null;
+		JSONObject object = new JSONObject();
+		try {
+			list = new ArrayList<>();
+			Workbook rwb = Workbook.getWorkbook(new File(file));
+			Sheet[] value = rwb.getSheets();
+			for (Sheet rs : value) {
+				int clos = rs.getColumns();// 得到所有的列
+				int rows = rs.getRows();// 得到所有的行
+				if (clos == 0 && rows == 0) {
 					break;
 				}
-		        for (int i = 1; i < rows; i++) {
-		            for (int j = 1; j < clos; j++) {
-		                object.put("name", rs.getCell(j++, i).getContents());
-		                object.put("phone", rs.getCell(j++, i).getContents());
-		                object.put("IDcard", rs.getCell(j++, i).getContents());
-		                list.add(object);
-		            }
-		        }
+				for (int i = 1; i < rows; i++) {
+					for (int j = 1; j < clos; j++) {
+						object.put("name", rs.getCell(j++, i).getContents());
+						object.put("phone", rs.getCell(j++, i).getContents());
+						object.put("IDcard", rs.getCell(j++, i).getContents());
+						list.add(object);
+					}
+				}
 			}
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	        list = null;
-	    } 
-	    return list;
-	} 
+		} catch (Exception e) {
+			e.printStackTrace();
+			list = null;
+		}
+		return list;
+	}
 }
