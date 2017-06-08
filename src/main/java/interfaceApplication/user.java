@@ -1,11 +1,19 @@
 package interfaceApplication;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
 import esayhelper.JSONHelper;
+import jxl.Sheet;
+import jxl.SheetSettings;
+import jxl.Workbook;
 import model.userModel;
+import security.codec;
 
 @SuppressWarnings("unchecked")
 public class user {
@@ -45,7 +53,7 @@ public class user {
 	 * 
 	 * @param userInfo
 	 *            登录信息 ( 登录名(id,email,mobphone),password 登录密码,loginmode
-	 *            登录模式（0:用户名；1:email；2:手机号）)
+	 *            登录模式（0:用户名+密码；1:email+密码；2:手机号+密码；3:真实姓名+身份证号）)
 	 * @return 除密码之外的数据
 	 */
 	public String UserLogin(String userInfo) {
@@ -118,9 +126,49 @@ public class user {
 	public String FindWbBySid(String wbid,String userid) {
 		return usermodel.FindWb(wbid, userid);
 	}
-	
-	//根据网站id显示数据
-	public void getUser(String wbid) {
-		
+	//根据用户名和身份证号查询数据
+	public String findByCard(String name,String IDCard) {
+		return usermodel.findUserByCard(name, IDCard).toString();
 	}
+	//从excel表中导入数据到数据库表中
+	public String ExcelImport(String filepath) {
+		filepath = codec.DecodeHtmlTag(filepath);
+		JSONArray array = new JSONArray();
+		List<JSONObject> list = getAllByExcel(filepath);
+		if (list==null) {
+			return usermodel.resultMessage(11,"");
+		}
+		for (JSONObject jsonObject : list) {
+			array.add(jsonObject);
+		}
+		return usermodel.Import(array);
+	}
+	private List<JSONObject> getAllByExcel(String file){
+	    List<JSONObject> list=null;
+	    JSONObject object = new JSONObject();
+	    try {
+	    	list = new ArrayList<>();
+	        Workbook rwb=Workbook.getWorkbook(new File(file));
+	        Sheet[] value = rwb.getSheets();
+	        for (Sheet rs : value) {
+	        	int clos=rs.getColumns();//得到所有的列
+		        int rows=rs.getRows();//得到所有的行
+		        if (clos ==0 && rows ==0) {
+					break;
+				}
+		        for (int i = 1; i < rows; i++) {
+		            for (int j = 1; j < clos; j++) {
+		                object.put("name", rs.getCell(j++, i).getContents());
+		                object.put("phone", rs.getCell(j++, i).getContents());
+		                object.put("IDcard", rs.getCell(j++, i).getContents());
+		                list.add(object);
+		            }
+		        }
+			}
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        list = null;
+	    } 
+	    return list;
+	} 
 }

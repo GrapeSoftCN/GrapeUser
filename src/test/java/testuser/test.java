@@ -22,5 +22,6 @@ public class test {
 //		System.out.println(new user().UserPage(1, 2));
 //		System.out.println(new wechatUser().FindOpenId("oZU2Lw7s_7bATZXXJL5L2CvmFrCY"));
 //		System.out.println(new wechatUser().FindOpenId("oZU2Lw7s_7bATZXXJL5L2CvmFrCY"));
+//	System.out.println(new user().ExcelImport("E:@t@ttestfile@ttest.xls"));
 	}
 }

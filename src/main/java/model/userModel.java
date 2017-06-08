@@ -9,15 +9,12 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.xml.bind.attachment.AttachmentMarshaller;
-
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import apps.appsProxy;
-import authority.privilige;
 import database.db;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
@@ -33,8 +30,6 @@ public class userModel {
 	private static DBHelper users;
 	private static formHelper _form;
 	private JSONObject _obj = new JSONObject();
-	// private privilige privil = new
-	// privilige(execRequest.getChannelValue("GrapeSID").toString());
 	// private static String wbid;
 	private static session session = new session();
 	static {
@@ -48,10 +43,11 @@ public class userModel {
 
 	public userModel() {
 		_form.putRule("id", formdef.notNull);
-		_form.putRule("password", formdef.notNull);
+		// _form.putRule("password", formdef.notNull);
 		_form.putRule("name", formdef.notNull);
-		_form.putRule("registerip", formdef.notNull);
-		_form.putRule("wbid", formdef.notNull);
+		// _form.putRule("registerip", formdef.notNull);
+		// _form.putRule("wbid", formdef.notNull);
+		// _form.putRule("IDCard", formdef.notNull);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -114,28 +110,56 @@ public class userModel {
 	public String checkLogin(JSONObject userinfo) {
 		int loginMode = 0;
 		String username = "";
+		String password = "";
 		if (userinfo.containsKey("loginmode")) {
 			loginMode = Integer.parseInt(userinfo.get("loginmode").toString());
 		}
-		if (loginMode == 0) {
+		switch (loginMode) {
+		case 0:
 			username = userinfo.get("id").toString();
 			if (!checkUserName(username)) {
 				return resultMessage(2, "");
 			}
-		}
-		if (loginMode == 1) {
+			password = userinfo.get("password").toString();
+			break;
+		case 1:
 			username = userinfo.get("email").toString();
 			if (!checkEmail(username)) {
 				return resultMessage(4, "");
 			}
-		}
-		if (loginMode == 2) {
+			password = userinfo.get("password").toString();
+			break;
+		case 2:
 			username = userinfo.get("mobphone").toString();
 			if (!checkMobileNumber(username)) {
 				return resultMessage(6, "");
 			}
+			password = userinfo.get("password").toString();
+			break;
+		case 3:
+			username = userinfo.get("name").toString();
+			password = userinfo.get("IDCard").toString();
+			break;
 		}
-		JSONObject object = login(username, userinfo.get("password").toString(), loginMode);
+		// if (loginMode == 0) {
+		// username = userinfo.get("id").toString();
+		// if (!checkUserName(username)) {
+		// return resultMessage(2, "");
+		// }
+		// }
+		// if (loginMode == 1) {
+		// username = userinfo.get("email").toString();
+		// if (!checkEmail(username)) {
+		// return resultMessage(4, "");
+		// }
+		// }
+		// if (loginMode == 2) {
+		// username = userinfo.get("mobphone").toString();
+		// if (!checkMobileNumber(username)) {
+		// return resultMessage(6, "");
+		// }
+		// }
+		JSONObject object = login(username, password, loginMode);
 		return object != null ? object.toString() : null;
 	}
 
@@ -145,6 +169,7 @@ public class userModel {
 	private JSONObject login(String username, String password, int loginMode) {
 		String sid = "";
 		String _checkField = "";
+		String field = "password";
 		switch (loginMode) {
 		case 0:
 			_checkField = "id";
@@ -155,9 +180,15 @@ public class userModel {
 		case 2:
 			_checkField = "mobphone";
 			break;
+		case 3:
+			_checkField = "name";
+			field = "IDCard";
+			break;
 		}
-		password = codec.md5(password);
-		JSONObject object = bind().eq(_checkField, username).eq("password", password).find();
+		if (field.equals("password")) {
+			password = codec.md5(password);
+		}
+		JSONObject object = bind().eq(_checkField, username).eq(field, password).find();
 		if (object != null) {
 			String wbid = object.get("wbid").toString();
 			JSONArray array = getWbID(wbid);
@@ -170,7 +201,6 @@ public class userModel {
 			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
 			sid = session.createSession(username, object);
-			System.out.println(sid);
 			object.put("sid", sid);
 		}
 		return object;
@@ -183,6 +213,9 @@ public class userModel {
 		// String webinfo = execRequest
 		// ._run("GrapeWebInfo/WebInfo/WebFindById/s:" + wbid, null)
 		// .toString();
+		if (wbid.equals("0")) {
+			return webs;
+		}
 		try {
 			webs = new JSONArray();
 			String webinfo = appsProxy.proxyCall(getAppIp("host").split("/")[0],
@@ -336,7 +369,8 @@ public class userModel {
 				}
 				if (roleplv > 3000 && roleplv <= 5000) {
 					JSONObject oid = (JSONObject) obj.get("_id");
-					array = bind().like("ownid", oid.get("$oid").toString()).eq("wbid", (String) obj.get("currentWeb")).page(idx, pageSize);
+					array = bind().like("ownid", oid.get("$oid").toString()).eq("wbid", (String) obj.get("currentWeb"))
+							.page(idx, pageSize);
 				}
 				object = new JSONObject();
 				object.put("totalSize", (int) Math.ceil((double) array.size() / pageSize));
@@ -418,6 +452,10 @@ public class userModel {
 		return bind().eq("mobphone", phoneno).find();
 	}
 
+	public JSONObject findUserByCard(String name, String IDCard) {
+		return bind().eq("name", name).eq("IDCard", IDCard).find();
+	}
+
 	public boolean checkUser(String id, String pw) {
 		pw = secPassword(pw.toString());
 		return bind().eq("id", id).eq("password", pw).find() == null;
@@ -469,6 +507,19 @@ public class userModel {
 
 	public String secPassword(String passwd) {
 		return codec.md5(passwd);
+	}
+
+	//excel导入数据到数据库
+	public String Import(JSONArray array) {
+		int code = 0;
+		for (int i = 0; i < array.size(); i++) {
+			if (code == 0) {
+				code = bind().data((JSONObject) array.get(i)).insertOnce() != null ? 0 : 99;
+			}else{
+				code = 99;
+			}
+		}
+		return resultMessage(code, "导入excel成功");
 	}
 
 	// 中断当前操作，等待用户输入验证码
@@ -532,16 +583,18 @@ public class userModel {
 			if (object != null) {
 				object2 = session.getSession(object.toString());
 				if (object2 != null) {
-					String info = appsProxy.proxyCall(getAppIp("host").split("/")[0],
-							appsProxy.appid()+"/16/roles/getRole/" + object2.get("ugid").toString(), null, "").toString();
+					String info = appsProxy
+							.proxyCall(getAppIp("host").split("/")[0],
+									appsProxy.appid() + "/16/roles/getRole/" + object2.get("ugid").toString(), null, "")
+							.toString();
 					objects = JSONHelper.string2json(info);
-					if (objects!=null) {
+					if (objects != null) {
 						objects = JSONHelper.string2json(objects.get("message").toString());
 					}
-					if (objects!=null) {
+					if (objects != null) {
 						objects = JSONHelper.string2json(objects.get("records").toString());
 					}
-					if (objects!=null) {
+					if (objects != null) {
 						roleplv = Integer.parseInt(objects.get("plv").toString());
 					}
 				}
@@ -554,36 +607,6 @@ public class userModel {
 			object2 = null;
 		}
 		return object2;
-	}
-
-	// 获取角色
-	private int getRole(Object object) {
-		int code = 0;
-		JSONObject obj = getSessPlv(object);
-		if (obj != null) {
-			try {
-				int plv = Integer.parseInt((String) obj.get("rolePLV"));
-				if (plv == 0) {
-					code = 0;
-				}
-				if (plv > 1000 && plv <= 3000) {
-					code = 1;
-				}
-				if (plv > 3000 && plv <= 5000) {
-					code = 2;
-				}
-				if (plv > 5000 && plv <= 10000) {
-					code = 3;
-				}
-				if (plv > 10000) {
-					code = 4;
-				}
-			} catch (Exception e) {
-				nlogger.logout(e);
-				code = 0;
-			}
-		}
-		return code;
 	}
 
 	//
@@ -648,10 +671,13 @@ public class userModel {
 			msg = "该用户已登录";
 			break;
 		case 9:
-			msg = "用户名或密码错误";
+			msg = "登录信息填写错误";
 			break;
 		case 10:
 			msg = "没有操作权限";
+			break;
+		case 11:
+			msg = "获取excel文件内容失败";
 			break;
 		default:
 			msg = "其他操作异常";

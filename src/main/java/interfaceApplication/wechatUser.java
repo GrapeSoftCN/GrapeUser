@@ -11,6 +11,7 @@ import com.alibaba.druid.support.logging.Log;
 
 import apps.appsProxy;
 import database.db;
+import esayhelper.CacheHelper;
 import esayhelper.DBHelper;
 import esayhelper.JSONHelper;
 import esayhelper.TimeHelper;
@@ -19,6 +20,7 @@ import esayhelper.formHelper;
 import esayhelper.jGrapeFW_Message;
 import esayhelper.formHelper.formdef;
 import nlogger.nlogger;
+import security.codec;
 import session.session;
 
 public class wechatUser {
@@ -35,6 +37,7 @@ public class wechatUser {
 
 	@SuppressWarnings("unchecked")
 	public String insertOpenId(String info) {
+		CacheHelper helper = new CacheHelper();
 		int code = 99;
 		JSONObject object = JSONHelper.string2json(info);
 		if (object != null) {
@@ -60,22 +63,50 @@ public class wechatUser {
 				String userinfo = appsProxy
 						.proxyCall(callHost(), appsProxy.appid() + "/30/Wechat/getUserInfo/s:" + openid, null, "")
 						.toString();
+				nlogger.logout(JSONHelper.string2json(userinfo));
 				if (JSONHelper.string2json(userinfo) != null) {
 					String message = JSONHelper.string2json(userinfo).get("message").toString();
 					String records = JSONHelper.string2json(message).get("records").toString();
-					String headimgurl = JSONHelper.string2json(records).get("headimgurl").toString();
+					String headimgurl = "";
+					if (records.contains("headimgurl")) {
+						headimgurl = JSONHelper.string2json(records).get("headimgurl").toString();
+					}
 					object.put("headimgurl", headimgurl);
 					code = openIdBind().data(object).insertOnce() != null ? 0 : 99;
+					nlogger.logout("headimgurl:" + headimgurl);
+					nlogger.logout("code:" + code);
+					if (code==0) {
+						//更新缓存中的用户信息
+						if (helper.get(openid + "Info") != null) {
+							helper.delete(openid + "Info");
+							helper.setget(openid + "Info", FindOpenId(openid));
+						}
+					}
 				}
 			} catch (Exception e) {
 				nlogger.logout(e);
 				code = 99;
 			}
 		}
-		return resultMessage(code);
+		return resultMessage(code,"实名认证成功");
+	}
+
+	public String UpdateInfo(String openid, String info) {
+		JSONObject object = JSONHelper.string2json(info);
+		int code = 99;
+		try {
+			if (object != null) {
+				code = openIdBind().eq("openid", openid).data(object).update() != null ? 0 : 99;
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
+		}
+		return resultMessage(code,"修改数据成功");
 	}
 
 	public String FindOpenId(String openid) {
+		System.out.println(openid);
 		JSONObject object = openIdBind().eq("openid", openid).find();
 		return resultMessage(object);
 	}
@@ -125,7 +156,7 @@ public class wechatUser {
 	public String pageby(int ids, int pageSize, String info) {
 		JSONObject object = null;
 		JSONObject objects = JSONHelper.string2json(info);
-		if (objects!=null) {
+		if (objects != null) {
 			try {
 				openIdBind().and();
 				for (Object obj : objects.keySet()) {
@@ -183,7 +214,7 @@ public class wechatUser {
 	@SuppressWarnings("unchecked")
 	private int judge(JSONArray array) {
 		int code = 99;
-		if (array.size()!=0) {
+		if (array.size() != 0) {
 			try {
 				for (int i = 0; i < array.size(); i++) {
 					JSONObject object = (JSONObject) array.get(i);
@@ -200,7 +231,8 @@ public class wechatUser {
 					object.put("isdelete", "0");
 					object.put("kickTime", "");
 					object.put("time", TimeHelper.nowMillis() + "");
-					code = openIdBind().eq("openid", object.get("openid").toString()).data(object).update() != null ? 0 : 99;
+					code = openIdBind().eq("openid", object.get("openid").toString()).data(object).update() != null ? 0
+							: 99;
 				}
 			} catch (Exception e) {
 				nlogger.logout(e);
@@ -216,10 +248,12 @@ public class wechatUser {
 
 	@SuppressWarnings("unchecked")
 	private String resultMessage(JSONObject object) {
+		System.out.println(object);
 		JSONObject obj = new JSONObject();
-		if (object != null) {
+		if (object == null) {
 			object = new JSONObject();
 		}
+		nlogger.logout(object);
 		obj.put("records", object);
 		return resultMessage(0, obj.toString());
 	}
@@ -241,6 +275,9 @@ public class wechatUser {
 			break;
 		case 4:
 			msg = "用户不存在";
+			break;
+		case 5:
+			msg = "服务次数已达到上限，实名认证失败，请稍候再试";
 			break;
 		default:
 			msg = "其他操作异常";

@@ -6,6 +6,7 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
+import apps.appsProxy;
 import esayhelper.JSONHelper;
 import model.RolesModel;
 import nlogger.nlogger;
@@ -13,24 +14,16 @@ import nlogger.nlogger;
 public class roles {
 	private RolesModel rolesModel = new RolesModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
-	// private String userId;
 
 	public roles() {
-		// userId = execRequest.getChannelValue("Userid").toString();
-
-		defcol.put("ownid", 0);
+		defcol.put("ownid", appsProxy.appid());
 		defcol.put("sort", 0);
 		defcol.put("fatherid", 0);
+		defcol.put("wbid", "0");
 		defcol.put("plv", 1000); // 权限值
 	}
 
 	public String RoleInsert(String roleInfo) {
-		// 该用户是否拥有新增权限
-		// String tip = execRequest
-		// ._run("GrapeAuth/Auth/InsertPLV/s:" + userId, null).toString();
-		// if (!"0".equals(tip)) {
-		// return rolesModel.resultMessage(4, "没有新增权限");
-		// }
 		JSONObject object = rolesModel.addMap(defcol, JSONHelper.string2json(roleInfo));
 		return rolesModel.resultMessage(rolesModel.insert(object), "新增角色成功");
 	}

@@ -1,9 +1,11 @@
 package model;
 
+import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
@@ -17,18 +19,15 @@ import esayhelper.formHelper;
 import esayhelper.jGrapeFW_Message;
 import nlogger.nlogger;
 import rpc.execRequest;
+import session.session;
 
 public class RolesModel {
 	private static DBHelper role;
 	private static formHelper _form;
-	// private static String wbid;
+	private static String wbid;
 	private JSONObject _obj = new JSONObject();
 
 	static {
-		// session session = new session();
-		// String info = session.get("username").toString();
-		// wbid = JSONHelper.string2json(info).get("currentWeb").toString();
-		// role = new DBHelper("mongodb", "userGroup");
 		role = new DBHelper(appsProxy.configValue().get("db").toString(), "userGroup");
 		_form = role.getChecker();
 	}
@@ -43,9 +42,12 @@ public class RolesModel {
 
 	@SuppressWarnings("unchecked")
 	public int insert(JSONObject object) {
-		// object.put("wbid", wbid);
 		int code = 99;
 		if (object != null) {
+			JSONObject obj = getSessPlv(execRequest.getChannelValue("sid"));
+			if (object.containsKey("wbid") && ("").equals(object.get(wbid).toString()) && obj != null) {
+				object.put("wbid", obj.get("currentWeb").toString());
+			}
 			try {
 				if (!_form.checkRuleEx(object)) {
 					return 1; // 必填字段没有填
@@ -53,21 +55,7 @@ public class RolesModel {
 				if (select(object.get("name").toString()) != null) {
 					return 2; // 角色已存在
 				}
-				// JSONObject obj = new JSONObject();
-				// obj.put("name", object.get("name").toString());
-				// String tip = execRequest._run("GrapeAuth/Auth/AddAuth/s:" +
-				// obj.toString(), null).toString();
-				// long code = (long)
-				// JSONHelper.string2json(tip).get("errorcode");
-				// if (code == 0) {
 				Object object2 = bind().data(object).insertOnce();
-				// if (object2 != null) {
-				// return 0;
-				// }
-				// tip = execRequest._run("GrapeAuth/Auth/DeleteAuth/s:" +
-				// object.get("name").toString(), null).toString();
-				// code = (long) JSONHelper.string2json(tip).get("errorcode");
-				// }
 				code = (object2 != null ? 0 : 99);
 			} catch (Exception e) {
 				nlogger.logout(e);
@@ -80,15 +68,22 @@ public class RolesModel {
 	public int update(String id, JSONObject object) {
 		int code = 99;
 		JSONObject obj = null;
-		if (object != null && getPlv(id) != 0) {
-			try {
-				obj = new JSONObject();
-				obj = bind().eq("_id", new ObjectId(id)).data(object).update();
-				code = (obj != null ? 0 : 99);
-			} catch (Exception e) {
-				nlogger.logout(e);
-				code = 99;
+		try {
+			if (object != null && getPlv(id) != 0) {
+				try {
+					obj = new JSONObject();
+					obj = bind().eq("_id", new ObjectId(id)).data(object).update();
+					code = (obj != null ? 0 : 99);
+				} catch (Exception e) {
+					nlogger.logout(e);
+					code = 99;
+				}
+			} else {
+				code = 4;
 			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			code = 99;
 		}
 		return code;
 	}
@@ -315,23 +310,93 @@ public class RolesModel {
 	}
 
 	@SuppressWarnings("unchecked")
-	public JSONObject addMap(HashMap<String, Object> map, JSONObject object) {
-		if (object != null) {
-			if (map.entrySet() != null) {
-				Iterator<Entry<String, Object>> iterator = map.entrySet().iterator();
-				while (iterator.hasNext()) {
-					Map.Entry<String, Object> entry = iterator.next();
-					if (!object.containsKey(entry.getKey())) {
-						object.put(entry.getKey(), entry.getValue());
+	private JSONObject getSessPlv(Object object) {
+		JSONObject object2 = null;
+		session session = new session();
+		try {
+			JSONObject objects = new JSONObject();
+			int roleplv = 0;
+			object2 = new JSONObject();
+			if (object != null) {
+				object2 = session.getSession(object.toString());
+				if (object2 != null) {
+					String info = appsProxy
+							.proxyCall(getAppIp("host").split("/")[0],
+									appsProxy.appid() + "/16/roles/getRole/" + object2.get("ugid").toString(), null, "")
+							.toString();
+					objects = JSONHelper.string2json(info);
+					if (objects != null) {
+						objects = JSONHelper.string2json(objects.get("message").toString());
+					}
+					if (objects != null) {
+						objects = JSONHelper.string2json(objects.get("records").toString());
+					}
+					if (objects != null) {
+						roleplv = Integer.parseInt(objects.get("plv").toString());
 					}
 				}
+				object2.put("rolePlv", roleplv);
+			} else {
+				object2.put("rolePlv", 0);
 			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			object2 = null;
 		}
-		return object;
+		return object2;
+	}
+
+	private String getAppIp(String key) {
+		String value = "";
+		try {
+			Properties pro = new Properties();
+			pro.load(new FileInputStream("URLConfig.properties"));
+			value = pro.getProperty(key);
+		} catch (Exception e) {
+			value = "";
+		}
+		return value;
+	}
+
+	// 获取应用url[内网url或者外网url]，0表示内网，1表示外网
+	private String getHost(int signal) {
+		String host = null;
+		try {
+			if (signal == 0 || signal == 1) {
+				host = getAppIp("host").split("/")[signal];
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+			host = null;
+		}
+		return host;
 	}
 
 	@SuppressWarnings("unchecked")
-	public String resultMessage(JSONObject object) {
+	public JSONObject addMap(HashMap<String, Object> map, JSONObject object) {
+		JSONObject obj = null;
+		if (object != null) {
+			try {
+				obj = object;
+				if (map.entrySet() != null) {
+					Iterator<Entry<String, Object>> iterator = map.entrySet().iterator();
+					while (iterator.hasNext()) {
+						Map.Entry<String, Object> entry = iterator.next();
+						if (!obj.containsKey(entry.getKey())) {
+							obj.put(entry.getKey(), entry.getValue());
+						}
+					}
+				}
+			} catch (Exception e) {
+				nlogger.logout(e);
+				obj = null;
+			}
+		}
+		return obj;
+	}
+
+	@SuppressWarnings("unchecked")
+	private String resultMessage(JSONObject object) {
 		if (object == null) {
 			object = new JSONObject();
 		}
@@ -340,7 +405,7 @@ public class RolesModel {
 	}
 
 	@SuppressWarnings("unchecked")
-	public String resultMessage(JSONArray array) {
+	private String resultMessage(JSONArray array) {
 		if (array == null) {
 			array = new JSONArray();
 		}
@@ -364,12 +429,15 @@ public class RolesModel {
 			msg = "设置排序或层级失败";
 			break;
 		case 4:
-			msg = "没有创建数据权限，请联系管理员进行权限调整";
+			msg = "无法操作该条数据";
 			break;
 		case 5:
-			msg = "没有修改数据权限，请联系管理员进行权限调整";
+			msg = "没有创建数据权限，请联系管理员进行权限调整";
 			break;
 		case 6:
+			msg = "没有修改数据权限，请联系管理员进行权限调整";
+			break;
+		case 7:
 			msg = "没有删除数据权限，请联系管理员进行权限调整";
 			break;
 		default:
