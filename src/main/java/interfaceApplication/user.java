@@ -8,14 +8,10 @@ import java.util.List;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
-import authority.privilige;
 import esayhelper.JSONHelper;
 import jxl.Sheet;
-import jxl.SheetSettings;
 import jxl.Workbook;
 import model.userModel;
-import nlogger.nlogger;
-import rpc.execRequest;
 import security.codec;
 
 @SuppressWarnings("unchecked")
@@ -139,8 +135,9 @@ public class user {
 	// 从excel表中导入数据到数据库表中
 	public String ExcelImport(String filepath) {
 		filepath = codec.DecodeHtmlTag(filepath);
+		String path = "C://JavaCode/tomcat/webapps/"+getImageUri(filepath);
 		JSONArray array = new JSONArray();
-		List<JSONObject> list = getAllByExcel(filepath);
+		List<JSONObject> list = getAllByExcel(path);
 		if (list == null) {
 			return usermodel.resultMessage(11, "");
 		}
@@ -177,5 +174,15 @@ public class user {
 			list = null;
 		}
 		return list;
+	}
+	private String getImageUri(String imageURL){
+		String subString;
+		String rString = null;
+		int i = imageURL.toLowerCase().indexOf("http://");
+		if( i >= 0){
+			subString = imageURL.substring(i + 7);
+			rString = subString.split("/")[0];
+		}
+		return rString;
 	}
 }

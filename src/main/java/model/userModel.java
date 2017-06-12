@@ -37,7 +37,7 @@ public class userModel {
 		users = (DBHelper) new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
 		_form = users.getChecker();
 	}
-	
+
 	private db bind() {
 		return users.bind(String.valueOf(appsProxy.appid()));
 	}
@@ -105,6 +105,8 @@ public class userModel {
 				nlogger.logout(e);
 				code = 99;
 			}
+		} else {
+			code = 12;
 		}
 		return code;
 	}
@@ -367,42 +369,48 @@ public class userModel {
 					array = bind().eq("wbid", (String) UserInfo.get("currentWeb")).page(idx, pageSize);
 				}
 				object.put("totalSize", (int) Math.ceil((double) array.size() / pageSize));
-				
 			} catch (Exception e) {
 				nlogger.logout(e);
 				object.put("totalSize", 0);
 			}
-		}else{
+			object.put("currentPage", idx);
+			object.put("pageSize", pageSize);
+			object.put("data", array);
+			return resultMessage(object);
+		} else {
+			return resultMessage(12, "");
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public String page(int idx, int pageSize, JSONObject userInfo) {
+		db db = bind();
+		JSONObject object = new JSONObject();
+		JSONArray array = new JSONArray();
+		if (UserInfo == null) {
+			return resultMessage(12, "");
+		}
+
+		try {
+			if (userInfo != null) {
+				for (Object object2 : userInfo.keySet()) {
+					if ("_id".equals(object2.toString())) {
+						db.eq("_id", new ObjectId(userInfo.get("_id").toString()));
+					}
+					db.eq(object2.toString(), userInfo.get(object2.toString()));
+				}
+				array = db.dirty().page(idx, pageSize);
+				object.put("totalSize", (int) Math.ceil((double) array.size() / pageSize));
+			} else {
+				object.put("totalSize", 0);
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
 			object.put("totalSize", 0);
 		}
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
 		object.put("data", array);
-		return resultMessage(object);
-	}
-
-	@SuppressWarnings("unchecked")
-	public String page(int idx, int pageSize, JSONObject userInfo) {
-		JSONObject object = null;
-		if (userInfo != null) {
-			try {
-				object = new JSONObject();
-				for (Object object2 : userInfo.keySet()) {
-					if ("_id".equals(object2.toString())) {
-						bind().eq("_id", new ObjectId(userInfo.get("_id").toString()));
-					}
-					bind().eq(object2.toString(), userInfo.get(object2.toString()));
-				}
-				JSONArray array = bind().dirty().page(idx, pageSize);
-				object.put("totalSize", (int) Math.ceil((double) bind().count() / pageSize));
-				object.put("currentPage", idx);
-				object.put("pageSize", pageSize);
-				object.put("data", array);
-			} catch (Exception e) {
-				nlogger.logout(e);
-				object = null;
-			}
-		}
 		return resultMessage(object);
 	}
 
@@ -714,6 +722,9 @@ public class userModel {
 			break;
 		case 11:
 			msg = "获取excel文件内容失败";
+			break;
+		case 12:
+			msg = "登录信息已失效";
 			break;
 		default:
 			msg = "其他操作异常";
