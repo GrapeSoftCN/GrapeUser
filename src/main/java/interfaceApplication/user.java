@@ -12,7 +12,9 @@ import esayhelper.JSONHelper;
 import jxl.Sheet;
 import jxl.Workbook;
 import model.userModel;
+import rpc.execRequest;
 import security.codec;
+import session.session;
 
 @SuppressWarnings("unchecked")
 public class user {
@@ -33,6 +35,8 @@ public class user {
 		defcol.put("isdelete", 0);
 		defcol.put("isvisble", 0);
 		defcol.put("plv", 1000);
+		defcol.put("IDcard", "");
+		defcol.put("wbid", "");
 	}
 
 	/**
@@ -43,8 +47,7 @@ public class user {
 	 * @return
 	 */
 	public String UserRegister(String userInfo) {
-		JSONObject object = usermodel.AddMap(defcol, JSONHelper.string2json(userInfo));
-		return usermodel.resultMessage(usermodel.register(object), "用户注册成功");
+		return usermodel.resultMessage(usermodel.register(JSONHelper.string2json(userInfo)), "用户注册成功");
 	}
 
 	/**
@@ -56,7 +59,12 @@ public class user {
 	 * @return 除密码之外的数据
 	 */
 	public String UserLogin(String userInfo) {
-		System.out.println("123");
+		session se = new session();
+//		String sid = (String) execRequest.getChannelValue("sid");
+		System.out.println(session.getSID());
+		if (session.getSID()!=null) {
+			se.deleteSession();
+		}
 		String mString = "";
 		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
 		if (usersinfo != null) {
@@ -109,7 +117,7 @@ public class user {
 		return usermodel.page(idx, pageSize, object);
 	}
 
-	public String UserDelect(String id) {
+	public String UserDelete(String id) {
 		return usermodel.resultMessage(usermodel.delect(id), "删除成功");
 	}
 
@@ -135,9 +143,10 @@ public class user {
 	// 从excel表中导入数据到数据库表中
 	public String ExcelImport(String filepath) {
 		filepath = codec.DecodeHtmlTag(filepath);
-		String path = "C://JavaCode/tomcat/webapps/"+getImageUri(filepath);
+//		String path = "C://JavaCode/tomcat/webapps/"+getImageUri(filepath);
+//		String path = filepath;
 		JSONArray array = new JSONArray();
-		List<JSONObject> list = getAllByExcel(path);
+		List<JSONObject> list = getAllByExcel(filepath);
 		if (list == null) {
 			return usermodel.resultMessage(11, "");
 		}
