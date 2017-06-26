@@ -59,12 +59,6 @@ public class user {
 	 * @return 除密码之外的数据
 	 */
 	public String UserLogin(String userInfo) {
-		session se = new session();
-//		String sid = (String) execRequest.getChannelValue("sid");
-		System.out.println(session.getSID());
-		if (session.getSID()!=null) {
-			se.deleteSession();
-		}
 		String mString = "";
 		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
 		if (usersinfo != null) {

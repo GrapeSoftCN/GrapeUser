@@ -272,8 +272,6 @@ public class userModel {
 
 	public void logout(String sid) {
 		String GrapeSID = (String) execRequest.getChannelValue("sid");
-		GrapeSID = codec.DecodeHtmlTag(GrapeSID);
-		GrapeSID = codec.decodebase64(GrapeSID);
 		session.deleteSession(GrapeSID);
 	}
 
