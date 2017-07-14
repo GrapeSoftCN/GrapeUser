@@ -1,23 +1,25 @@
 package interfaceApplication;
 
 import java.io.FileInputStream;
+import java.net.URLDecoder;
 import java.util.Properties;
 
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import JGrapeSystem.jGrapeFW_Message;
 import apps.appsProxy;
+import cache.CacheHelper;
 import check.checkHelper;
 import check.formHelper;
 import check.formHelper.formdef;
 import database.DBHelper;
 import database.db;
-import esayhelper.CacheHelper;
-import esayhelper.JSONHelper;
-import esayhelper.TimeHelper;
-import esayhelper.jGrapeFW_Message;
+import json.JSONHelper;
 import nlogger.nlogger;
+import security.codec;
+import time.TimeHelper;
 
 public class wechatUser {
 	private static DBHelper opHelper;
@@ -87,10 +89,14 @@ public class wechatUser {
 		return resultMessage(code,"实名认证成功");
 	}
 
+	@SuppressWarnings("unchecked")
 	public String UpdateInfo(String openid, String info) {
-		JSONObject object = JSONHelper.string2json(info);
 		int code = 99;
 		try {
+			JSONObject object = JSONHelper.string2json(info);
+			String headimg = (String)object.get("headimgurl");
+			headimg = codec.DecodeHtmlTag(headimg);
+			object.put("headimgurl", codec.decodebase64(headimg));
 			if (object != null) {
 				code = openIdBind().eq("openid", openid).data(object).update() != null ? 0 : 99;
 			}
@@ -165,6 +171,7 @@ public class wechatUser {
 				JSONArray array = openIdBind().dirty().page(ids, pageSize);
 				object = new JSONObject();
 				object.put("totalSize", (int) Math.ceil((double) openIdBind().count() / pageSize));
+				openIdBind().clear();
 				object.put("pageSize", pageSize);
 				object.put("currentPage", ids);
 				object.put("data", array);

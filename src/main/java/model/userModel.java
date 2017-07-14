@@ -2,6 +2,7 @@ package model;
 
 import java.io.FileInputStream;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -14,19 +15,19 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
+import JGrapeSystem.jGrapeFW_Message;
 import apps.appsProxy;
 import authority.privilige;
 import check.formHelper;
 import check.formHelper.formdef;
 import database.DBHelper;
 import database.db;
-import esayhelper.JSONHelper;
-import esayhelper.TimeHelper;
+import json.JSONHelper;
 import nlogger.nlogger;
 import rpc.execRequest;
-import esayhelper.jGrapeFW_Message;
 import security.codec;
 import session.session;
+import time.TimeHelper;
 
 public class userModel {
 	private static DBHelper users;
@@ -36,6 +37,7 @@ public class userModel {
 	private static session session = new session();
 	private HashMap<String, Object> defcol = new HashMap<>();
 	private String sid = null;
+	private static Map<String, String> ssessionmap = new Hashtable<>();
 
 	static {
 		users = new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
@@ -118,9 +120,7 @@ public class userModel {
 				nlogger.logout(e);
 				code = 99;
 			}
-		} else {
-			code = 12;
-		}
+		} 
 		return code;
 	}
 
@@ -178,6 +178,7 @@ public class userModel {
 				object = login(username, password, loginMode);
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			object = null;
 		}
 		return object != null ? object.toString() : null;
@@ -187,6 +188,10 @@ public class userModel {
 	// 同时获取所管理网站的id及网站名称
 	@SuppressWarnings("unchecked")
 	private JSONObject login(String username, String password, int loginMode) {
+		if (ssessionmap.containsKey(username)) {
+			session.delete(ssessionmap.get(username));
+//			session.deleteSession(ssessionmap.get(username));
+		}
 		String sid = "";
 		String _checkField = "";
 		String field = "password";
@@ -221,9 +226,10 @@ public class userModel {
 			wbid = wbid.split(",")[0];
 			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
-			sid = session.createSession(username, object);
-			// sid = codec.encodebase64(sid);
-			// sid = encodeHtml(sid);
+			sid = session.createSession(username, object, 86400);
+//			sid = session.createSession(username, object);
+			ssessionmap.put(username, sid);
+			System.out.println(ssessionmap);
 			object.put("sid", sid);
 		}
 		return object;
@@ -272,6 +278,11 @@ public class userModel {
 
 	public void logout(String sid) {
 		String GrapeSID = (String) execRequest.getChannelValue("sid");
+		if (GrapeSID == null ) {
+			if (!ssessionmap.containsKey(sid)) {
+				GrapeSID = ssessionmap.get(sid);
+			}
+		}
 		session.deleteSession(GrapeSID);
 	}
 
@@ -380,8 +391,8 @@ public class userModel {
 		JSONArray array = new JSONArray();
 		int roleSign = getRoleSign();
 		if (UserInfo != null) {
+			db db = bind();
 			try {
-				db db = bind();
 				// 获取角色权限
 				if (roleSign == 5 || roleSign == 4) {
 					array = db.page(idx, pageSize);
@@ -394,14 +405,14 @@ public class userModel {
 			} catch (Exception e) {
 				nlogger.logout(e);
 				object.put("totalSize", 0);
+			}finally {
+				db.clear();
 			}
 			object.put("currentPage", idx);
 			object.put("pageSize", pageSize);
 			object.put("data", array);
-			return resultMessage(object);
-		} else {
-			return resultMessage(12, "");
-		}
+		} 
+		return resultMessage(object);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -409,9 +420,6 @@ public class userModel {
 		db db = bind();
 		JSONObject object = new JSONObject();
 		JSONArray array = new JSONArray();
-		if (UserInfo == null) {
-			return resultMessage(12, "");
-		}
 
 		try {
 			if (userInfo != null) {
@@ -422,13 +430,15 @@ public class userModel {
 					db.eq(object2.toString(), userInfo.get(object2.toString()));
 				}
 				array = db.dirty().page(idx, pageSize);
-				object.put("totalSize", (int) Math.ceil((double) array.size() / pageSize));
+				object.put("totalSize", (int) Math.ceil((double) db.count() / pageSize));
 			} else {
 				object.put("totalSize", 0);
 			}
 		} catch (Exception e) {
 			nlogger.logout(e);
 			object.put("totalSize", 0);
+		}finally {
+			db.clear();
 		}
 		object.put("currentPage", idx);
 		object.put("pageSize", pageSize);
@@ -548,7 +558,7 @@ public class userModel {
 
 	//通过姓名和密码获取身份证号
 	private JSONObject getIDCard(String name, String password) {
-		JSONObject object = bind().eq("name", name).eq("password", password).field("IDcard").find();
+		JSONObject object = bind().eq("name", name).eq("password", codec.md5(password)).field("IDcard").find();
 		return object != null ? object : null;
 	}
 
@@ -567,7 +577,7 @@ public class userModel {
 		if (sid != null) {
 			try {
 				privilige privil = new privilige(sid);
-				int roleplv = privil.getRolePV();
+				int roleplv = privil.getRolePV(appsProxy.appidString());
 				if (roleplv >= 1000 && roleplv < 3000) {
 					roleSign = 1; // 普通用户即企业员工
 				}
@@ -706,9 +716,6 @@ public class userModel {
 			break;
 		case 11:
 			msg = "获取excel文件内容失败";
-			break;
-		case 12:
-			msg = "登录信息已失效";
 			break;
 		default:
 			msg = "其他操作异常";

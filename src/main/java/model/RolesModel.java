@@ -11,12 +11,12 @@ import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import JGrapeSystem.jGrapeFW_Message;
 import apps.appsProxy;
 import check.formHelper;
 import database.DBHelper;
 import database.db;
-import esayhelper.JSONHelper;
-import esayhelper.jGrapeFW_Message;
+import json.JSONHelper;
 import nlogger.nlogger;
 import rpc.execRequest;
 import session.session;
@@ -185,6 +185,8 @@ public class RolesModel {
 			} catch (Exception e) {
 				nlogger.logout(e);
 				object = null;
+			}finally {
+				bind().clear();
 			}
 		}
 		return resultMessage(object);
