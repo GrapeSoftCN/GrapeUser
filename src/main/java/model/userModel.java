@@ -18,6 +18,7 @@ import org.json.simple.JSONValue;
 import JGrapeSystem.jGrapeFW_Message;
 import apps.appsProxy;
 import authority.privilige;
+import check.checkHelper;
 import check.formHelper;
 import check.formHelper.formdef;
 import database.DBHelper;
@@ -30,25 +31,23 @@ import session.session;
 import time.TimeHelper;
 
 public class userModel {
-	private static DBHelper users;
-	private static formHelper _form;
+	private DBHelper users;
+	private formHelper _form;
 	private JSONObject _obj = new JSONObject();
 	private JSONObject UserInfo = null;
-	private static session session = new session();
+	private session session = new session();
 	private HashMap<String, Object> defcol = new HashMap<>();
 	private String sid = null;
-	private static Map<String, String> ssessionmap = new Hashtable<>();
-
-	static {
-		users = new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
-		_form = users.getChecker();
-	}
+	private Map<String, String> ssessionmap = new Hashtable<>();
 
 	private db bind() {
+		nlogger.logout(appsProxy.appid());
 		return users.bind(String.valueOf(appsProxy.appid()));
 	}
 
 	public userModel() {
+		users = new DBHelper(appsProxy.configValue().get("db").toString(), "userList");
+		_form = users.getChecker();
 		sid = (String) execRequest.getChannelValue("sid");
 		if (sid != null) {
 			UserInfo = new JSONObject();
@@ -120,7 +119,7 @@ public class userModel {
 				nlogger.logout(e);
 				code = 99;
 			}
-		} 
+		}
 		return code;
 	}
 
@@ -164,16 +163,16 @@ public class userModel {
 			case 4:
 				// username = userinfo.get("name").toString();
 				// password = userinfo.get("IDcard").toString();
-				
+
 				String name = userinfo.get("name").toString();
 				password = userinfo.get("password").toString();
-				JSONObject rs = getIDCard(name,password);
+				JSONObject rs = getIDCard(name, password);
 				username = rs == null ? null : rs.get("IDcard").toString();
 				password = name;
 				break;
 			}
 			object = null;
-			if( username != null ){
+			if (username != null) {
 				object = new JSONObject();
 				object = login(username, password, loginMode);
 			}
@@ -190,7 +189,7 @@ public class userModel {
 	private JSONObject login(String username, String password, int loginMode) {
 		if (ssessionmap.containsKey(username)) {
 			session.delete(ssessionmap.get(username));
-//			session.deleteSession(ssessionmap.get(username));
+			// session.deleteSession(ssessionmap.get(username));
 		}
 		String sid = "";
 		String _checkField = "";
@@ -227,9 +226,7 @@ public class userModel {
 			object.put("currentWeb", wbid);
 			object.put("webinfo", array);
 			sid = session.createSession(username, object, 86400);
-//			sid = session.createSession(username, object);
 			ssessionmap.put(username, sid);
-			System.out.println(ssessionmap);
 			object.put("sid", sid);
 		}
 		return object;
@@ -278,7 +275,7 @@ public class userModel {
 
 	public void logout(String sid) {
 		String GrapeSID = (String) execRequest.getChannelValue("sid");
-		if (GrapeSID == null ) {
+		if (GrapeSID == null) {
 			if (!ssessionmap.containsKey(sid)) {
 				GrapeSID = ssessionmap.get(sid);
 			}
@@ -295,17 +292,53 @@ public class userModel {
 		return rl;
 	}
 
+	//通过用户名id，修改密码   --后台改密操作
 	@SuppressWarnings("unchecked")
 	public int changePW(String id, String oldPW, String newPW) {
 		if (checkUser(id, oldPW)) {
 			return 9;
 		}
 		JSONObject object = new JSONObject();
-		object.put("password", codec.md5(newPW));
+		object.put("password", secPassword(newPW));
 		object = bind().eq("id", id).eq("password", codec.md5(oldPW)).data(object).update();
 		return object != null ? 0 : 99;
 	}
 
+	//修改密码:loginmode:0:用户名id；1：email；2：mobphone；3：name or IDcard
+	@SuppressWarnings("unchecked")
+	public int changePWs(String id, String oldPW, String newPW,int loginmode) {
+		JSONObject object= new JSONObject();
+		String _checkField = "";
+		switch (loginmode) {
+		case 0:
+			_checkField = "id";
+			break;
+		case 1:
+			_checkField = "email";
+			break;
+		case 2:
+			_checkField = "mobphone";
+			break;
+		case 3:
+			if (!checkHelper.checkPersonCardID(id)) {
+				object = getIDCard(id, oldPW);
+				id = object == null ? null : object.get("IDcard").toString();
+			}
+			_checkField = "IDcard";
+			break;
+		}
+		if (checkUsers(_checkField, id, oldPW)) {
+			return 9;
+		}
+		JSONObject obj = new JSONObject();
+		obj.put("password", secPassword(newPW));
+		object = bind().eq(_checkField, id).eq("password", secPassword(oldPW)).data(object).update();
+		return object != null ? 0 : 99;
+	}
+	//验证用户信息，email+pwd，mobphone+pwd；IDcard+pwd
+	private boolean checkUsers(String field, String value,String pw) {
+		return bind().eq(field, value).eq("password", secPassword(pw)).find() == null;
+	}
 	public int edit(String _id, JSONObject userInfo) {
 		int code = 99;
 		if (userInfo != null) {
@@ -405,13 +438,13 @@ public class userModel {
 			} catch (Exception e) {
 				nlogger.logout(e);
 				object.put("totalSize", 0);
-			}finally {
+			} finally {
 				db.clear();
 			}
 			object.put("currentPage", idx);
 			object.put("pageSize", pageSize);
 			object.put("data", array);
-		} 
+		}
 		return resultMessage(object);
 	}
 
@@ -437,7 +470,7 @@ public class userModel {
 		} catch (Exception e) {
 			nlogger.logout(e);
 			object.put("totalSize", 0);
-		}finally {
+		} finally {
 			db.clear();
 		}
 		object.put("currentPage", idx);
@@ -491,7 +524,7 @@ public class userModel {
 	}
 
 	public boolean checkUser(String id, String pw) {
-		pw = secPassword(pw.toString());
+		pw = secPassword(pw);
 		return bind().eq("id", id).eq("password", pw).find() == null;
 	}
 
@@ -556,9 +589,10 @@ public class userModel {
 		return resultMessage(code, "导入excel成功");
 	}
 
-	//通过姓名和密码获取身份证号
+	// 通过姓名和密码获取身份证号
 	private JSONObject getIDCard(String name, String password) {
-		JSONObject object = bind().eq("name", name).eq("password", codec.md5(password)).field("IDcard").find();
+		JSONObject object = bind().eq("name", name)
+				.eq("password", !password.equals("") ? codec.md5(password) : password).field("IDcard").find();
 		return object != null ? object : null;
 	}
 

@@ -12,9 +12,7 @@ import json.JSONHelper;
 import jxl.Sheet;
 import jxl.Workbook;
 import model.userModel;
-import rpc.execRequest;
 import security.codec;
-import session.session;
 
 @SuppressWarnings("unchecked")
 public class user {
@@ -86,6 +84,10 @@ public class user {
 		return usermodel.resultMessage(usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
 	}
 
+	public String UserChangePWFront(String UserName, String oldPW, String newPW,int loginmode) {
+		return usermodel.resultMessage(usermodel.changePWs(UserName, oldPW, newPW,loginmode), "密码修改成功！");
+	}
+
 	public String UserEdit(String _id, String userInfo) {
 		return usermodel.resultMessage(usermodel.edit(_id, JSONHelper.string2json(userInfo)), "用户信息修改成功");
 	}
@@ -137,8 +139,8 @@ public class user {
 	// 从excel表中导入数据到数据库表中
 	public String ExcelImport(String filepath) {
 		filepath = codec.DecodeHtmlTag(filepath);
-//		String path = "C://JavaCode/tomcat/webapps/"+getImageUri(filepath);
-//		String path = filepath;
+		// String path = "C://JavaCode/tomcat/webapps/"+getImageUri(filepath);
+		// String path = filepath;
 		JSONArray array = new JSONArray();
 		List<JSONObject> list = getAllByExcel(filepath);
 		if (list == null) {
@@ -178,11 +180,12 @@ public class user {
 		}
 		return list;
 	}
-	private String getImageUri(String imageURL){
+
+	private String getImageUri(String imageURL) {
 		String subString;
 		String rString = null;
 		int i = imageURL.toLowerCase().indexOf("http://");
-		if( i >= 0){
+		if (i >= 0) {
 			subString = imageURL.substring(i + 7);
 			rString = subString.split("/")[0];
 		}

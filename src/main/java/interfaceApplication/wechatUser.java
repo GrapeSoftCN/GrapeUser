@@ -1,7 +1,6 @@
 package interfaceApplication;
 
 import java.io.FileInputStream;
-import java.net.URLDecoder;
 import java.util.Properties;
 
 import org.bson.types.ObjectId;
@@ -22,9 +21,10 @@ import security.codec;
 import time.TimeHelper;
 
 public class wechatUser {
-	private static DBHelper opHelper;
-	private static formHelper form;
-	static {
+	private DBHelper opHelper;
+	private formHelper form;
+
+	public wechatUser() {
 		opHelper = new DBHelper(appsProxy.configValue().get("db").toString(), "UserOpenId");
 		form = opHelper.getChecker();
 	}
@@ -73,8 +73,8 @@ public class wechatUser {
 					code = openIdBind().data(object).insertOnce() != null ? 0 : 99;
 					nlogger.logout("headimgurl:" + headimgurl);
 					nlogger.logout("code:" + code);
-					if (code==0) {
-						//更新缓存中的用户信息
+					if (code == 0) {
+						// 更新缓存中的用户信息
 						if (helper.get(openid + "Info") != null) {
 							helper.delete(openid + "Info");
 							helper.setget(openid + "Info", FindOpenId(openid));
@@ -86,7 +86,7 @@ public class wechatUser {
 				code = 99;
 			}
 		}
-		return resultMessage(code,"实名认证成功");
+		return resultMessage(code, "实名认证成功");
 	}
 
 	@SuppressWarnings("unchecked")
@@ -94,7 +94,7 @@ public class wechatUser {
 		int code = 99;
 		try {
 			JSONObject object = JSONHelper.string2json(info);
-			String headimg = (String)object.get("headimgurl");
+			String headimg = (String) object.get("headimgurl");
 			headimg = codec.DecodeHtmlTag(headimg);
 			object.put("headimgurl", codec.decodebase64(headimg));
 			if (object != null) {
@@ -104,7 +104,7 @@ public class wechatUser {
 			nlogger.logout(e);
 			code = 99;
 		}
-		return resultMessage(code,"修改数据成功");
+		return resultMessage(code, "修改数据成功");
 	}
 
 	public String FindOpenId(String openid) {

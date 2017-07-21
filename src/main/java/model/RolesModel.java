@@ -22,21 +22,19 @@ import rpc.execRequest;
 import session.session;
 
 public class RolesModel {
-	private static DBHelper role;
-	private static formHelper _form;
-	private static String wbid;
+	private DBHelper role;
+	private formHelper _form;
+	private String wbid;
 	private JSONObject _obj = new JSONObject();
 
-	static {
-		role = new DBHelper(appsProxy.configValue().get("db").toString(), "userGroup");
-		_form = role.getChecker();
-	}
 
 	private db bind() {
 		return role.bind(String.valueOf(appsProxy.appid()));
 	}
 
 	public RolesModel() {
+		role = new DBHelper(appsProxy.configValue().get("db").toString(), "userGroup");
+		_form = role.getChecker();
 		_form.putRule("name", formHelper.formdef.notNull);
 	}
 
