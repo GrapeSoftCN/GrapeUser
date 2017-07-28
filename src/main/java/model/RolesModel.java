@@ -27,7 +27,6 @@ public class RolesModel {
 	private String wbid;
 	private JSONObject _obj = new JSONObject();
 
-
 	private db bind() {
 		return role.bind(String.valueOf(appsProxy.appid()));
 	}
@@ -183,7 +182,7 @@ public class RolesModel {
 			} catch (Exception e) {
 				nlogger.logout(e);
 				object = null;
-			}finally {
+			} finally {
 				bind().clear();
 			}
 		}
@@ -282,7 +281,7 @@ public class RolesModel {
 		JSONObject object = null;
 		try {
 			object = new JSONObject();
-			object = bind().eq("_id", new ObjectId(ugid)).field("plv").find();
+			object = bind().eq("_id", ugid).find();
 		} catch (Exception e) {
 			nlogger.logout(e);
 			object = null;
@@ -356,20 +355,6 @@ public class RolesModel {
 			value = "";
 		}
 		return value;
-	}
-
-	// 获取应用url[内网url或者外网url]，0表示内网，1表示外网
-	private String getHost(int signal) {
-		String host = null;
-		try {
-			if (signal == 0 || signal == 1) {
-				host = getAppIp("host").split("/")[signal];
-			}
-		} catch (Exception e) {
-			nlogger.logout(e);
-			host = null;
-		}
-		return host;
 	}
 
 	@SuppressWarnings("unchecked")

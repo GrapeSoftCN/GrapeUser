@@ -4,21 +4,30 @@ import java.util.HashMap;
 
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
 
 import apps.appsProxy;
 import json.JSONHelper;
 import model.RolesModel;
+import rpc.execRequest;
+import session.session;
 
 public class roles {
 	private RolesModel rolesModel = new RolesModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
+	private session session;
+	private String sid = null;
+	private JSONObject userinfo = new JSONObject();
 
 	public roles() {
+		session = new session();
+		sid = (String) execRequest.getChannelValue("sid");
+		if (sid != null) {
+			userinfo = session.getSession(sid);
+		}
 		defcol.put("ownid", appsProxy.appid());
 		defcol.put("sort", 0);
 		defcol.put("fatherid", 0);
-		defcol.put("wbid", "0");
+		defcol.put("wbid", (userinfo != null && userinfo.size() != 0) ? userinfo.get("currentWeb").toString() : "");
 		defcol.put("plv", 1000); // 权限值
 	}
 
@@ -39,7 +48,7 @@ public class roles {
 	 */
 	public String RoleUpdateBatch(String arraystring) {
 		int code = 99;
-		JSONArray array = (JSONArray) JSONValue.parse(arraystring);
+		JSONArray array = JSONArray.toJSONArray(arraystring);
 		if (array.size() != 0) {
 			for (int i = 0; i < array.size(); i++) {
 				if (code != 0) {

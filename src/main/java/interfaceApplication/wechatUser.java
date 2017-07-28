@@ -61,7 +61,6 @@ public class wechatUser {
 				String userinfo = appsProxy
 						.proxyCall(callHost(), appsProxy.appid() + "/30/Wechat/getUserInfo/s:" + openid, null, "")
 						.toString();
-				nlogger.logout(JSONHelper.string2json(userinfo));
 				if (JSONHelper.string2json(userinfo) != null) {
 					String message = JSONHelper.string2json(userinfo).get("message").toString();
 					String records = JSONHelper.string2json(message).get("records").toString();
@@ -72,7 +71,6 @@ public class wechatUser {
 					object.put("headimgurl", headimgurl);
 					code = openIdBind().data(object).insertOnce() != null ? 0 : 99;
 					nlogger.logout("headimgurl:" + headimgurl);
-					nlogger.logout("code:" + code);
 					if (code == 0) {
 						// 更新缓存中的用户信息
 						if (helper.get(openid + "Info") != null) {
@@ -256,7 +254,6 @@ public class wechatUser {
 		if (object == null) {
 			object = new JSONObject();
 		}
-		nlogger.logout(object);
 		obj.put("records", object);
 		return resultMessage(0, obj.toString());
 	}

@@ -1,10 +1,20 @@
 package interfaceApplication;
 
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Properties;
 
+import javax.imageio.ImageIO;
+
+import org.apache.commons.codec.binary.Base64;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -12,29 +22,42 @@ import json.JSONHelper;
 import jxl.Sheet;
 import jxl.Workbook;
 import model.userModel;
+import rpc.execRequest;
 import security.codec;
+import session.session;
+import time.TimeHelper;
 
 @SuppressWarnings("unchecked")
 public class user {
 	private userModel usermodel = new userModel();
 	private HashMap<String, Object> defcol = new HashMap<>();
 	private JSONObject _obj = new JSONObject();
+	private String sid = null;
+	private session session;
+	private JSONObject userInfo = new JSONObject();
 
 	public user() {
-		defcol.put("sex", 1);
-		defcol.put("birthday", 0);
-		defcol.put("point", 0);
-		defcol.put("cash", 0.0);
+		session = new session();
+		sid = (String) execRequest.getChannelValue("sid");
+		if (sid != null) {
+			userInfo = session.getSession(sid);
+		}
+		defcol.put("sex", 1); // 性别，默认为男
+		defcol.put("birthday", 0); // 出生日期
+		defcol.put("point", 0); // 积分
+		defcol.put("cash", 0.0); // 重要积分
 		defcol.put("ownid", 0);
-		defcol.put("time", null);
-		defcol.put("lasttime", 0);
-		defcol.put("ugid", 0);
-		defcol.put("state", 0);
-		defcol.put("isdelete", 0);
-		defcol.put("isvisble", 0);
-		defcol.put("plv", 1000);
-		defcol.put("IDcard", "");
-		defcol.put("wbid", "");
+		defcol.put("time", null); // 注册时间
+		defcol.put("lasttime", 0); // 上次登录时间
+		defcol.put("ugid", 0); // 角色id
+		defcol.put("state", 0); // 状态
+		defcol.put("isdelete", 0); // 是否删除状态[0:未删除状态；1:删除状态]
+		defcol.put("isvisble", 0); // 是否可见
+		defcol.put("plv", 1000); // 权限值
+		defcol.put("IDcard", ""); // 身份证号
+		defcol.put("wbid", (userInfo != null && userInfo.size() != 0) ? (String) userInfo.get("currentweb") : ""); // 所属网站id
+		defcol.put("loginCount", 0);
+		// defcol.put("userNo", SetUserNumber()); // 用户编号
 	}
 
 	/**
@@ -58,9 +81,11 @@ public class user {
 	 */
 	public String UserLogin(String userInfo) {
 		String mString = "";
+		JSONObject object;
 		String usersinfo = usermodel.checkLogin(JSONHelper.string2json(userInfo));
 		if (usersinfo != null) {
-			_obj.put("records", JSONHelper.string2json(usersinfo));
+			object = JSONObject.toJSON(usersinfo);
+			_obj.put("records", object);
 			mString = usermodel.resultMessage(0, _obj.toString());
 		} else {
 			mString = usermodel.resultMessage(9, "");
@@ -84,8 +109,8 @@ public class user {
 		return usermodel.resultMessage(usermodel.changePW(UserName, oldPW, newPW), "密码修改成功！");
 	}
 
-	public String UserChangePWFront(String UserName, String oldPW, String newPW,int loginmode) {
-		return usermodel.resultMessage(usermodel.changePWs(UserName, oldPW, newPW,loginmode), "密码修改成功！");
+	public String UserChangePWFront(String UserName, String oldPW, String newPW, int loginmode) {
+		return usermodel.resultMessage(usermodel.changePWs(UserName, oldPW, newPW, loginmode), "密码修改成功！");
 	}
 
 	public String UserEdit(String _id, String userInfo) {
@@ -150,6 +175,102 @@ public class user {
 			array.add(jsonObject);
 		}
 		return usermodel.Import(array);
+	}
+
+	/**
+	 * 获取当前用户姓名，及当前时间，添加至水印图片中
+	 * 
+	 * @project GrapeUser
+	 * @package interfaceApplication
+	 * @file user.java
+	 * 
+	 * @return
+	 *
+	 */
+	public String getUserImage() {
+		String name = "";
+		if (userInfo != null && userInfo.size() != 0) {
+			name = userInfo.getString("name");
+		}
+		return CreateImage(name);
+	}
+	/**
+	 * 生成图片
+	 * 
+	 * @project File
+	 * @package interfaceApplication
+	 * @file HandleImage.java
+	 * 
+	 * @param path
+	 * @param name
+	 * @return
+	 *
+	 */
+	private String CreateImage(String name) {
+		int width = 200;
+		int height = 200;
+		Font font = new Font("宋体", Font.BOLD, 12);
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		String currentTime = TimeHelper.stampToDate(TimeHelper.nowMillis());
+		try {
+			BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
+			Graphics2D g2 = bi.createGraphics();
+			g2.rotate(Math.toRadians(-45),width/2,height/2);
+			g2.setFont(font);
+			g2.setColor(new Color(230, 230, 230) );
+			
+			g2.drawString(name, 30, 50);
+			g2.drawString(currentTime, 30, 80);
+			g2.dispose();
+			//输出字节流格式
+			ImageIO.write(bi, "PNG", buffer);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "data:image/jpeg;base64," + Base64.encodeBase64String(buffer.toByteArray());
+	}
+
+	private String getAppIp(String key) {
+		String value = "";
+		try {
+			Properties pro = new Properties();
+			pro.load(new FileInputStream("URLConfig.properties"));
+			value = pro.getProperty(key);
+		} catch (Exception e) {
+			value = "";
+		}
+		return value;
+	}
+
+	private String getFileIp(String key, int sign) {
+		String value = "";
+		try {
+			if (sign == 0 || sign == 1) {
+				value = getAppIp(key).split("/")[sign];
+			}
+		} catch (Exception e) {
+			value = "";
+		}
+		return value;
+	}
+
+	/**
+	 * 设置用户编号
+	 * 
+	 * @project GrapeUser
+	 * @package interfaceApplication
+	 * @file user.java
+	 * 
+	 *
+	 */
+	private String SetUserNumber() {
+		int code = codec.randomString(5).hashCode(); // 获取5位随机字符串的hashcode
+		if (code < 0) {
+			code = -code;
+		}
+		// 获取11位字符串，不足11位的开头数字补1，其余补0
+		String value = String.format("%d%010d", 1, code);
+		return String.valueOf(value);
 	}
 
 	private List<JSONObject> getAllByExcel(String file) {

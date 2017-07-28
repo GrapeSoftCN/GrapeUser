@@ -10,10 +10,10 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.ObjectUtils.Null;
 import org.bson.types.ObjectId;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
-import org.json.simple.JSONValue;
 
 import JGrapeSystem.jGrapeFW_Message;
 import apps.appsProxy;
@@ -41,7 +41,6 @@ public class userModel {
 	private Map<String, String> ssessionmap = new Hashtable<>();
 
 	private db bind() {
-		nlogger.logout(appsProxy.appid());
 		return users.bind(String.valueOf(appsProxy.appid()));
 	}
 
@@ -138,21 +137,27 @@ public class userModel {
 				if (!checkUserName(username)) {
 					return resultMessage(2, "");
 				}
-				password = userinfo.get("password").toString();
+				if (userinfo.containsKey("password")) {
+					password = userinfo.get("password").toString();
+				}
 				break;
 			case 1:// email,password模式
 				username = userinfo.get("email").toString();
 				if (!checkEmail(username)) {
 					return resultMessage(4, "");
 				}
-				password = userinfo.get("password").toString();
+				if (userinfo.containsKey("password")) {
+					password = userinfo.get("password").toString();
+				}
 				break;
 			case 2://
 				username = userinfo.get("mobphone").toString();
 				if (!checkMobileNumber(username)) {
 					return resultMessage(6, "");
 				}
-				password = userinfo.get("password").toString();
+				if (userinfo.containsKey("password")) {
+					password = userinfo.get("password").toString();
+				}
 				break;
 			case 3:
 				// username = userinfo.get("name").toString();
@@ -165,7 +170,9 @@ public class userModel {
 				// password = userinfo.get("IDcard").toString();
 
 				String name = userinfo.get("name").toString();
-				password = userinfo.get("password").toString();
+				if (userinfo.containsKey("password")) {
+					password = userinfo.get("password").toString();
+				}
 				JSONObject rs = getIDCard(name, password);
 				username = rs == null ? null : rs.get("IDcard").toString();
 				password = name;
@@ -187,6 +194,8 @@ public class userModel {
 	// 同时获取所管理网站的id及网站名称
 	@SuppressWarnings("unchecked")
 	private JSONObject login(String username, String password, int loginMode) {
+		JSONObject loginData;
+		int code;
 		if (ssessionmap.containsKey(username)) {
 			session.delete(ssessionmap.get(username));
 			// session.deleteSession(ssessionmap.get(username));
@@ -228,8 +237,45 @@ public class userModel {
 			sid = session.createSession(username, object, 86400);
 			ssessionmap.put(username, sid);
 			object.put("sid", sid);
+			// 新增登录次数,获取用户id
+			loginData = AddCount(_checkField, username);
+			String _id = ( (JSONObject)object.get("_id") ).getString("$oid");
+			code = edit(_id, loginData);
 		}
 		return object;
+	}
+
+	/**
+	 * 增加登录次数
+	 * 
+	 * @project GrapeUser
+	 * @package interfaceApplication
+	 * @file user.java
+	 * 
+	 * @return
+	 *
+	 */
+	@SuppressWarnings("unchecked")
+	private JSONObject AddCount(String checkField, String value) {
+		JSONObject obj = new JSONObject();
+		long times = 0;
+		String values;
+		try {
+			// 获取登录次数
+			JSONObject logincount = bind().eq(checkField, value).field("logincount").limit(1).find();
+			if (logincount != null && logincount.size() != 0) {
+				values = String.valueOf(logincount.get("logincount"));
+				if (values.contains("$numberLong")) {
+					logincount = JSONObject.toJSON(values);
+					values = (logincount != null && logincount.size() != 0) ? logincount.getString("$numberLong") : "0";
+				}
+				times = Long.parseLong(values) + 1;
+			}
+		} catch (Exception e) {
+			nlogger.logout(e);
+		}
+		obj.put("logincount", times);
+		return obj;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -252,7 +298,8 @@ public class userModel {
 				rs = JSONHelper.string2json(rs.get("message").toString());
 				if (rs != null) {
 					String records = rs.get("records").toString();
-					JSONArray array = (JSONArray) JSONValue.parse(records);
+					JSONArray array = JSONArray.toJSONArray(records);
+					// JSONArray array = (JSONArray) JSONValue.parse(records);
 					if (array.size() > 0) {
 						JSONObject objects = null;
 						JSONObject objid = null;
@@ -292,7 +339,7 @@ public class userModel {
 		return rl;
 	}
 
-	//通过用户名id，修改密码   --后台改密操作
+	// 通过用户名id，修改密码 --后台改密操作
 	@SuppressWarnings("unchecked")
 	public int changePW(String id, String oldPW, String newPW) {
 		if (checkUser(id, oldPW)) {
@@ -304,10 +351,10 @@ public class userModel {
 		return object != null ? 0 : 99;
 	}
 
-	//修改密码:loginmode:0:用户名id；1：email；2：mobphone；3：name or IDcard
+	// 修改密码:loginmode:0:用户名id；1：email；2：mobphone；3：name or IDcard
 	@SuppressWarnings("unchecked")
-	public int changePWs(String id, String oldPW, String newPW,int loginmode) {
-		JSONObject object= new JSONObject();
+	public int changePWs(String id, String oldPW, String newPW, int loginmode) {
+		JSONObject object = new JSONObject();
 		String _checkField = "";
 		switch (loginmode) {
 		case 0:
@@ -332,13 +379,15 @@ public class userModel {
 		}
 		JSONObject obj = new JSONObject();
 		obj.put("password", secPassword(newPW));
-		object = bind().eq(_checkField, id).eq("password", secPassword(oldPW)).data(object).update();
+		object = bind().eq(_checkField, id).eq("password", secPassword(oldPW)).data(obj).update();
 		return object != null ? 0 : 99;
 	}
-	//验证用户信息，email+pwd，mobphone+pwd；IDcard+pwd
-	private boolean checkUsers(String field, String value,String pw) {
+
+	// 验证用户信息，email+pwd，mobphone+pwd；IDcard+pwd
+	private boolean checkUsers(String field, String value, String pw) {
 		return bind().eq(field, value).eq("password", secPassword(pw)).find() == null;
 	}
+
 	public int edit(String _id, JSONObject userInfo) {
 		int code = 99;
 		if (userInfo != null) {
