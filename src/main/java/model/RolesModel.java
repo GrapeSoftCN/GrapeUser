@@ -320,8 +320,7 @@ public class RolesModel {
 				object2 = session.getSession(object.toString());
 				if (object2 != null) {
 					String info = appsProxy
-							.proxyCall(getAppIp("host").split("/")[0],
-									appsProxy.appid() + "/16/roles/getRole/" + object2.get("ugid").toString(), null, "")
+							.proxyCall("/GrapeUser/roles/getRole/" + object2.get("ugid").toString(), null, "")
 							.toString();
 					objects = JSONHelper.string2json(info);
 					if (objects != null) {

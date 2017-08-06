@@ -59,7 +59,7 @@ public class wechatUser {
 				}
 				String openid = object.get("openid").toString();
 				String userinfo = appsProxy
-						.proxyCall(callHost(), appsProxy.appid() + "/30/Wechat/getUserInfo/s:" + openid, null, "")
+						.proxyCall("/GrapeWechat/Wechat/getUserInfo/s:" + openid, null, "")
 						.toString();
 				if (JSONHelper.string2json(userinfo) != null) {
 					String message = JSONHelper.string2json(userinfo).get("message").toString();

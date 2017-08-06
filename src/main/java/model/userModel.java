@@ -52,9 +52,9 @@ public class userModel {
 			UserInfo = new JSONObject();
 			UserInfo = session.getSession(sid);
 		}
-		_form.putRule("id", formdef.notNull);
-		_form.putRule("password", formdef.notNull);
-		_form.putRule("name", formdef.notNull);
+		_form.putRule("id", formdef.notNull,"");
+		_form.putRule("password", formdef.notNull,"e10adc3949ba59abbe56e057f20f883e"); //注册时，密码未填，默认为123456
+		_form.putRule("name", formdef.notNull,"");
 
 		defcol.put("sex", 1);
 		defcol.put("birthday", 0);
@@ -239,7 +239,7 @@ public class userModel {
 			object.put("sid", sid);
 			// 新增登录次数,获取用户id
 			loginData = AddCount(_checkField, username);
-			String _id = ( (JSONObject)object.get("_id") ).getString("$oid");
+			String _id = ((JSONObject) object.get("_id")).getString("$oid");
 			code = edit(_id, loginData);
 		}
 		return object;
@@ -290,8 +290,7 @@ public class userModel {
 		}
 		try {
 			webs = new JSONArray();
-			String webinfo = appsProxy.proxyCall(getAppIp("host").split("/")[0],
-					appsProxy.appid() + "/17/WebInfo/WebFindById/s:" + wbid, null, "").toString();
+			String webinfo = appsProxy.proxyCall("/GrapeWebInfo/WebInfo/WebFindById/s:" + wbid).toString();
 			// wbid对应的信息
 			JSONObject rs = JSONHelper.string2json(webinfo);
 			if (rs != null) {
@@ -309,6 +308,7 @@ public class userModel {
 							objects = new JSONObject();
 							objects.put("wbid", objid.get("$oid").toString());
 							objects.put("wbname", object2.get("title").toString());
+							objects.put("wbgid", object2.get("wbgid").toString());
 							webs.add(objects);
 						}
 					}
@@ -526,6 +526,51 @@ public class userModel {
 		object.put("pageSize", pageSize);
 		object.put("data", array);
 		return resultMessage(object);
+	}
+
+	@SuppressWarnings("unchecked")
+	public String page(String wbid, int idx, int pageSize, String userInfo) {
+		JSONObject object = new JSONObject();
+		JSONArray array = null;
+		long total = 0, totalSize = 0;
+		int role = getRoleSign();
+		if (wbid == null || wbid.equals("")) {
+			// 获取角色权限
+			if (role == 0) {
+				return resultMessage(10, "");
+			}
+			if (role == 6 || role == 5 || role == 4) {
+				wbid = null;
+			}
+			if (role == 3 || role == 2) {
+				wbid = UserInfo.getString("currentWeb");
+			}
+		}
+
+		db db = getDB(wbid, userInfo);
+		array = db.dirty().page(idx, pageSize);
+		totalSize = db.dirty().pageMax(pageSize);
+		total = db.count();
+		object.put("total", total);
+		object.put("totalSize", totalSize);
+		object.put("currentPage", idx);
+		object.put("pageSize", pageSize);
+		object.put("data", array != null ? array : new JSONArray());
+		return resultMessage(object);
+	}
+
+	private db getDB(String wbid, String condString) {
+		db db = bind();
+		if (condString != null && condString.equals("")) {
+			JSONArray array = JSONArray.toJSONArray(condString);
+			if (array!=null && array.size()!=0) {
+				db.where(array);
+			}
+		}
+		if (wbid != null && wbid.equals("")) {
+			db.eq("wbid", wbid);
+		}
+		return db;
 	}
 
 	public int delect(String id) {
@@ -799,6 +844,9 @@ public class userModel {
 			break;
 		case 11:
 			msg = "获取excel文件内容失败";
+			break;
+		case 12:
+			msg = "验证码，请重新获取验证码";
 			break;
 		default:
 			msg = "其他操作异常";

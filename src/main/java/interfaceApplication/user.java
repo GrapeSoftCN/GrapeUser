@@ -18,6 +18,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
+import checkCode.checkCodeHelper;
 import json.JSONHelper;
 import jxl.Sheet;
 import jxl.Workbook;
@@ -25,6 +26,7 @@ import model.userModel;
 import rpc.execRequest;
 import security.codec;
 import session.session;
+import sms.ruoyaMASDB;
 import time.TimeHelper;
 
 @SuppressWarnings("unchecked")
@@ -69,6 +71,19 @@ public class user {
 	 */
 	public String UserRegister(String userInfo) {
 		return usermodel.resultMessage(usermodel.register(JSONHelper.string2json(userInfo)), "用户注册成功");
+	}
+
+	// 获取验证码,发送至用户手机号
+	public String getVerifyCode(String phone) {
+		String code = checkCodeHelper.getCheckCode(phone, 6);
+		code = ruoyaMASDB.sendSMS(phone, "验证码为：" + code + "有效时间为。。。，请在有效时间内进行验证");
+		return usermodel.resultMessage((code != null ? 0 : 99), "验证码发送成功");
+	}
+
+	// 验证用户输入的验证码
+	public String checkVerifyCode(String phone, String code) {
+		boolean flag = checkCodeHelper.checkCode(phone, code);
+		return usermodel.resultMessage(flag == true ? 0 : 99, "验证成功");
 	}
 
 	/**
@@ -129,13 +144,25 @@ public class user {
 		return usermodel.resultMessage(usermodel.select(id));
 	}
 
+	/** ------前台用户查询--------- **/
+	public String UserPageFront(String wbid, int idx, int pageSize) {
+		return usermodel.page(wbid, idx, pageSize, null);
+	}
+
+	public String UserPageByFront(String wbid, int idx, int pageSize, String userinfo) {
+		return usermodel.page(wbid, idx, pageSize, userinfo);
+	}
+
+	/** ------后台用户查询--------- **/
 	public String UserPage(int idx, int pageSize) {
-		return usermodel.page(idx, pageSize);
+		// return usermodel.page(idx, pageSize);
+		return usermodel.page(null, idx, pageSize, null);
 	}
 
 	public String UserPageBy(int idx, int pageSize, String userinfo) {
-		JSONObject object = JSONHelper.string2json(userinfo);
-		return usermodel.page(idx, pageSize, object);
+		// JSONObject object = JSONHelper.string2json(userinfo);
+		// return usermodel.page(idx, pageSize, object);
+		return usermodel.page(null, idx, pageSize, userinfo);
 	}
 
 	public String UserDelete(String id) {
@@ -194,6 +221,7 @@ public class user {
 		}
 		return CreateImage(name);
 	}
+
 	/**
 	 * 生成图片
 	 * 
@@ -215,14 +243,14 @@ public class user {
 		try {
 			BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR);
 			Graphics2D g2 = bi.createGraphics();
-			g2.rotate(Math.toRadians(-45),width/2,height/2);
+			g2.rotate(Math.toRadians(-45), width / 2, height / 2);
 			g2.setFont(font);
-			g2.setColor(new Color(230, 230, 230) );
-			
+			g2.setColor(new Color(230, 230, 230));
+
 			g2.drawString(name, 30, 50);
 			g2.drawString(currentTime, 30, 80);
 			g2.dispose();
-			//输出字节流格式
+			// 输出字节流格式
 			ImageIO.write(bi, "PNG", buffer);
 		} catch (Exception e) {
 			e.printStackTrace();
